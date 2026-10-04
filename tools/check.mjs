@@ -69,6 +69,7 @@ for (const gate of gates.filter(g => !fast || !g.full)) {
     console.error(`FAIL  ${gate.name} (${seconds}s)\n\n${output.slice(-6000)}`);
     process.exit(1);
   }
-  console.log(`ok    ${gate.name.padEnd(12)} (${seconds}s)${gate.label ? `  ${gate.label}` : ""}`);
+  const label = gate.label ? `  ${gate.label}` : "";
+  console.log(`ok    ${gate.name.padEnd(12)} (${seconds}s)${label}`);
 }
 console.log(fast ? "Fast checks passed." : "All quality gates passed.");

@@ -26,10 +26,13 @@ internal sealed class TelemetryCapture : IDisposable
     {
         _activityListener.ShouldListenTo = source => source.Name == CopilotTelemetry.Name || ReferenceEquals(source, _rootSource);
         _activityListener.Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded;
-        _activityListener.ActivityStopped = Keep;
         ActivitySource.AddActivityListener(_activityListener);
         _root = _rootSource.StartActivity("test")
             ?? throw new InvalidOperationException("The root span was not sampled.");
+
+        // Subscribed only once the root exists: the listener is process-wide, so a span ending in a
+        // parallel test would otherwise reach Keep before there is a trace to compare it with.
+        _activityListener.ActivityStopped = Keep;
 
         _meterListener.InstrumentPublished = Subscribe;
         _meterListener.SetMeasurementEventCallback<long>((instrument, value, tags, _) => Keep(instrument, value, tags));

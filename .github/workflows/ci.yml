@@ -23,8 +23,9 @@ jobs:
           node-version: 24
           cache: npm
 
+      # Lifecycle scripts are off: the lint tooling needs none, and a compromised package could use one.
       - name: Install lint tooling
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       # Fails on any known-vulnerable package, direct or transitive (NuGetAudit).
       - name: Restore
