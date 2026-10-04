@@ -101,9 +101,8 @@ async function ask() {
   $("copilot-answer").hidden = false;
   $("copilot-status").textContent = `${answer.status} · ${answer.modelCalls} model call(s) · $${answer.costUsd.toFixed(4)}`;
   $("copilot-text").textContent = answer.answer;
-  $("copilot-tools").textContent = answer.toolCalls.length === 0
-    ? "No tools used."
-    : `Tools: ${answer.toolCalls.map(call => `${call.name} (${call.outcome})`).join(", ")}`;
+  const tools = answer.toolCalls.map(call => `${call.name} (${call.outcome})`).join(", ");
+  $("copilot-tools").textContent = answer.toolCalls.length === 0 ? "No tools used." : `Tools: ${tools}`;
 }
 
 // Runs an action with the triggering control disabled, and shows any failure where the user is looking.

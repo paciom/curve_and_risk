@@ -32,7 +32,7 @@ public sealed class MarketSnapshotService(CurveRiskDbContext db, TimeProvider cl
             AsOf = request.AsOf,
             Interpolation = market.Scheme.ToString(),
             QuotesJson = JsonSerializer.Serialize(request.Quotes),
-            CreatedUtc = clock.GetUtcNow(),
+            CreatedUtc = clock.UtcNowToMillisecond(),
         };
         db.MarketSnapshots.Add(entity);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

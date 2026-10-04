@@ -18,7 +18,7 @@ try {
 
 const projectDir = process.env.CLAUDE_PROJECT_DIR ?? input.cwd ?? process.cwd();
 const filePath = input.tool_input?.file_path;
-if (!filePath || !filePath.endsWith(".cs")) process.exit(0);
+if (!filePath?.endsWith(".cs")) process.exit(0);
 
 const absolute = path.resolve(projectDir, filePath);
 const relative = path.relative(projectDir, absolute);
