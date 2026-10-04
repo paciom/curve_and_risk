@@ -17,6 +17,7 @@ The domain is interest-rate risk, and the worked example is a Risk Copilot (an L
 | **Prompt engineering** | System prompt, tool descriptions, subagent briefs and repair messages that explain the reason behind each rule | [Prompt engineering](#prompt-engineering) |
 | **Context engineering** | Deciding what each agent sees, when, and what it must never treat as instruction | [Context engineering](#context-engineering) |
 | **Loop engineering** | Bounded agent loops with feedback, repair, approval and stop conditions, in the product and in development | [Loop engineering](#loop-engineering) |
+| **Graph engineering** | A fixed procedure written as a validated graph of steps: code owns the path, the model fills one node, a person approves by resuming a paused run | [Graph engineering](#graph-engineering) |
 | **Guard rails** | Rules enforced by code, not by asking: hooks, permission tiers, approval gates | [`.claude/hooks/`](../.claude/hooks/), [`settings.json`](../.claude/settings.json) |
 | **Deterministic quality gates** | Linting, SonarQube rules, complexity limits, banned APIs, coverage thresholds, secret and security scanning, all automatic | [Quality gates](#quality-gates-non-ai) |
 | **Subagents** | Reviewers and a test author that work with fresh context | [`.claude/agents/`](../.claude/agents/) |
@@ -143,6 +144,112 @@ Limits. The checks make the cheap ways of cheating fail; they do not prove a kep
 
 **The evaluation loop**: change a prompt or tool, run the [eval suite](../evals/), compare with the baseline, keep or revert ([`run-copilot-evals`](../.claude/skills/run-copilot-evals/SKILL.md)). Injection and write cases are must-pass, not averaged.
 
+## Graph engineering
+
+Loop engineering gives the model the control flow and bounds it. Graph engineering takes the control flow back: the procedure is a directed graph in code, nodes do one step each, edges say what may follow, and the model fills a node without choosing the path. The two sit side by side here because they suit different work.
+
+| | Loop ([`CopilotAgent`](../src/CurveRisk.Copilot/CopilotAgent.cs)) | Graph ([`RiskBriefGraph`](../src/CurveRisk.Copilot/Briefs/RiskBriefGraph.cs)) |
+|---|---|---|
+| Who picks the next step | The model | The edges, from the state |
+| Fits | An open question with an unknown number of steps | A known procedure that is run repeatedly |
+| Model calls | One per step | One, in the node that needs language (two with a repair) |
+| Tested offline | The harness around the model | Every path, node by node |
+| When the model is unavailable | No answer | The figures, without the paragraph |
+| Evidence for the number check | Every tool result in the conversation | A few dozen figures, set by the number of curve pillars and not by the size of the book |
+
+**The runtime** ([`src/CurveRisk.Workflows`](../src/CurveRisk.Workflows/), no dependency on AI packages or on the rest of the solution):
+
+| Part | Implementation |
+|---|---|
+| Nodes and state | [`IGraphNode<TState>`](../src/CurveRisk.Workflows/IGraphNode.cs): state in, state out. The state is an immutable record and the only thing passed between nodes |
+| Edges | [`Edge`](../src/CurveRisk.Workflows/Edge.cs): every possible target is declared, the choice is made from the state. A route that returns an undeclared target throws |
+| Validation before running | [`GraphValidator`](../src/CurveRisk.Workflows/GraphValidator.cs): no start, a duplicate name, a name or label that would need escaping in a diagram, an edge to nothing, an unreachable node, or a node from which no end can be reached. Every problem is reported at once |
+| Fan-out and join | Parallel branches start from the same state, run concurrently and are merged by a function ([`GraphRunner`](../src/CurveRisk.Workflows/GraphRunner.cs)) |
+| Bounded cycles | A cycle must have a way out to pass validation, and the runner stops at a step limit with a named status |
+| Pause and resume | A pause hands back the state; resuming continues at the pause's node and runs nothing before it. [`InMemoryCheckpointStore`](../src/CurveRisk.Workflows/CheckpointStore.cs) holds the state between requests: at most 100, for at most 15 minutes, each usable once |
+| Trace | Every node executed, in order, with its result and duration, plus one OpenTelemetry span per run and per node |
+| Diagram | [`GraphShape`](../src/CurveRisk.Workflows/GraphShape.cs) is derived from the definition that runs. The diagram below and the one on the web page both come from it |
+
+**The risk brief** ([`src/CurveRisk.Copilot/Briefs`](../src/CurveRisk.Copilot/Briefs/)): one request reports on the whole book.
+
+```mermaid
+flowchart TD
+    start([start])
+    load_portfolio[load_portfolio]
+    price_trades[price_trades]
+    run_risk[run_risk]
+    run_scenarios[run_scenarios]
+    gather{{gather}}
+    find_flags[find_flags]
+    narrate[narrate]
+    check_grounding[check_grounding]
+    request_repair[request_repair]
+    accept_commentary[accept_commentary]
+    drop_commentary[drop_commentary]
+    propose_save[propose_save]
+    save_scenario[save_scenario]
+    await_approval[/await_approval/]
+    Completed([Completed])
+    WithoutCommentary([WithoutCommentary])
+    EmptyPortfolio([EmptyPortfolio])
+    EngineFailed([EngineFailed])
+    ScenarioSaved([ScenarioSaved])
+    SaveDeclined([SaveDeclined])
+    SaveFailed([SaveFailed])
+    start --> load_portfolio
+    load_portfolio -->|the engine failed| EngineFailed
+    load_portfolio -->|no trades| EmptyPortfolio
+    load_portfolio --> price_trades
+    load_portfolio --> run_risk
+    load_portfolio --> run_scenarios
+    price_trades --> gather
+    run_risk --> gather
+    run_scenarios --> gather
+    gather -->|a tool failed| EngineFailed
+    gather --> find_flags
+    find_flags -->|no totals| EngineFailed
+    find_flags --> narrate
+    narrate -->|a draft| check_grounding
+    narrate -->|no draft| drop_commentary
+    check_grounding -->|grounded| accept_commentary
+    check_grounding -->|ungrounded, repair left| request_repair
+    check_grounding -->|ungrounded, none left| drop_commentary
+    request_repair --> narrate
+    accept_commentary -->|save offered| propose_save
+    accept_commentary --> Completed
+    drop_commentary -->|save offered| propose_save
+    drop_commentary --> WithoutCommentary
+    propose_save --> await_approval
+    save_scenario -->|saved| ScenarioSaved
+    save_scenario -->|declined| SaveDeclined
+    save_scenario -->|approved but failed| SaveFailed
+    await_approval -->|resume| save_scenario
+```
+
+| Step | Kind | Does |
+|---|---|---|
+| `load_portfolio` | Tool | `list_trades` |
+| `price_trades`, `run_risk`, `run_scenarios` | Tool, in parallel | One call per trade, and per trade and shock: four fixed shocks of 50bp |
+| `find_flags` | Rule | Adds the engine figures into book totals and picks the largest DV01 trade, the most exposed bucket and the worst scenario ([`BriefFacts.cs`](../src/CurveRisk.Copilot/Briefs/BriefFacts.cs)) |
+| `narrate` | Model | One paragraph from the totals, the ladder, the scenarios and the flags. It is not shown per-trade rows or trade ids. No tools; a static prompt ([`brief.md`](../src/CurveRisk.Copilot/Prompts/brief.md)) |
+| `check_grounding`, `request_repair` | Guard | The same `NumericGrounding` as the loop, against exactly what the model was shown. One repair naming the figures, then the paragraph is dropped |
+| `accept_commentary`, `drop_commentary` | Rule | Decide what is shown. A rejected draft never leaves the state |
+| `propose_save`, `await_approval`, `save_scenario` | Human | The run stops with a proposal. It writes only when resumed with a person's yes to that exact proposal ([`ProposedWrite.cs`](../src/CurveRisk.Copilot/Briefs/ProposedWrite.cs)) |
+
+How the invariants hold in a graph:
+
+- **Numbers.** The tables are built from engine results and never pass through the model. The paragraph is checked against the figures the model was given and nothing else, so a figure it was not shown (a notional, a single trade's value) cannot be stated. Book totals are sums taken by code, which is a recorded exception to the letter of invariant 1 ([ADR 0002](adr/0002-graph-workflows.md), decision 4).
+- **Writes.** Nodes call tools through the same [`ToolExecutor`](../src/CurveRisk.Copilot/ToolExecutor.cs), so the approval gate is the existing one. The first leg of a brief runs with a gate that declines everything.
+- **One tool definition.** The graph calls the catalog's tools by name with arguments it writes itself. It adds no tool.
+- **Stable prefix.** The narrate prompt is a file and the facts go in the user turn. A test asserts that two briefs of different books send the same system prompt.
+- **Provider port.** The narrate node depends on `IModelClient` only.
+
+Over HTTP: `POST /api/v1/risk-briefs` returns the figures, the commentary with its status, the trace and, when a save was offered, an approval id; `POST /api/v1/risk-briefs/approvals/{approvalId}` resumes; `GET /api/v1/risk-briefs/graph` serves the structure. An engine failure is a 422, a book over 50 trades is a 422 of its own type, and at most two briefs run at once, with a 429 for the next. The web page draws the graph from that endpoint and marks the steps and edges a run took.
+
+Tests: validation rules that each fail on their own ([`GraphValidationTests`](../tests/CurveRisk.Ai.Tests/Workflows/GraphValidationTests.cs)); routing, cycles, the step limit, real concurrency, faults, cancellation and resume ([`GraphRunnerTests`](../tests/CurveRisk.Ai.Tests/Workflows/GraphRunnerTests.cs)); every path of the brief against a scripted model, including a model that sums figures itself and a number planted in a trade description ([`RiskBriefCommentaryTests`](../tests/CurveRisk.Ai.Tests/Briefs/RiskBriefCommentaryTests.cs)); the approval round trip, including a state altered between the pause and the resume ([`RiskBriefApprovalTests`](../tests/CurveRisk.Ai.Tests/Briefs/RiskBriefApprovalTests.cs)); and the same over HTTP ([`RiskBriefApiTests`](../tests/CurveRisk.Api.Tests/RiskBriefApiTests.cs), [`RiskBriefApprovalApiTests`](../tests/CurveRisk.Api.Tests/RiskBriefApprovalApiTests.cs)). What four independent reviews broke is kept as tests in [`RiskBriefGuardTests`](../tests/CurveRisk.Ai.Tests/Briefs/RiskBriefGuardTests.cs), [`GraphHardeningTests`](../tests/CurveRisk.Ai.Tests/Workflows/GraphHardeningTests.cs) and [`RiskBriefHardeningApiTests`](../tests/CurveRisk.Api.Tests/RiskBriefHardeningApiTests.cs). A [test](../tests/CurveRisk.Ai.Tests/Briefs/RiskBriefDiagramTests.cs) fails if the diagram above differs from what the code exports.
+
+Limits. For the demo book of three trades a brief makes 19 tool calls and one model call by construction; how many calls the loop needs for the same request can only be measured against the live model, and has not been. The narrate node has never run against the live model. An invented figure can still match one of those evidence values by chance; that rate has not been measured since the evidence was narrowed. Figures in words or in full-width digits are not detected. The fixes made after review have not themselves been reviewed again. Checkpoints are in memory. A scenario saved through a brief lives in the engine's in-memory store and does not outlive the request, because the API does not persist scenarios yet. The eval dataset has no brief cases; it is protected from agent edits, so those are for a person to add.
+
 ## Quality gates (non-AI)
 
 AI review sits on top of deterministic tools; it does not replace them. A tool gives the same answer every time and cannot be persuaded. Full detail in [docs/quality-gates.md](quality-gates.md).
@@ -218,7 +325,8 @@ Each became a failing test before it was fixed. The full account is in [docs/ai-
 | [`evals/`](../evals/) | 18 cases, six deterministic graders, live runner |
 | [`tests/`](../tests/) | .NET tests and hook tests |
 | [`tools/`](../tools/), [`.githooks/`](../.githooks/) | The quality gate, coverage gate, thresholds, git hooks |
-| [`docs/`]() | [ADR 0001](adr/0001-ai-layer-architecture.md), [AI workflow](ai-workflow.md), [quality gates](quality-gates.md) |
+| [`src/CurveRisk.Workflows`](../src/CurveRisk.Workflows/) | Graph runtime: builder, validation, runner, checkpoints |
+| [`docs/`]() | [ADR 0001](adr/0001-ai-layer-architecture.md), [ADR 0002](adr/0002-graph-workflows.md), [AI workflow](ai-workflow.md), [quality gates](quality-gates.md) |
 
 ## Run it
 

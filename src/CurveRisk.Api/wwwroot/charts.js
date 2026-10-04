@@ -3,7 +3,7 @@
 const SVG = "http://www.w3.org/2000/svg";
 const BOX = { width: 640, height: 240, left: 56, right: 16, top: 16, bottom: 32 };
 
-function element(name, attributes = {}, text = null) {
+export function element(name, attributes = {}, text = null) {
   const node = document.createElementNS(SVG, name);
   for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
   if (text !== null) node.textContent = text;

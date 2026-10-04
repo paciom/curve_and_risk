@@ -24,6 +24,7 @@ public static class ApiSetup
         services.AddScoped<RiskRunService>();
         services.AddHostedService<RiskRunWorker>();
         AddCopilot(services, configuration);
+        services.AddRiskBriefs(configuration);
 
         services.AddProblemDetails();
         services.AddExceptionHandler<ProblemDetailsExceptionHandler>();
@@ -47,6 +48,7 @@ public static class ApiSetup
     {
         app.UseExceptionHandler();
         app.UseStatusCodePages();
+        app.UseRateLimiter();
 
         // The single-page UI in wwwroot. It talks to the API below like any other client.
         app.UseDefaultFiles();

@@ -107,5 +107,95 @@ public sealed record CopilotAnswerResponse(
     long OutputTokens,
     decimal CostUsd);
 
+/// <summary>Asks for a risk brief of the whole book, priced on the given snapshot.</summary>
+/// <param name="OfferSave">
+/// When true the brief stops before finishing and proposes saving its worst scenario. Nothing is saved
+/// unless the proposal is then approved.
+/// </param>
+public sealed record CreateRiskBriefRequest(Guid SnapshotId, bool OfferSave = false);
+
+/// <param name="ParallelDv01">PV change for a +1bp parallel shift of zero rates.</param>
+public sealed record RiskBriefTradeDto(string TradeId, double PresentValue, double ParRatePercent, double ParallelDv01);
+
+/// <param name="Name">ParallelUp, ParallelDown, Steepener or Flattener.</param>
+/// <param name="ProfitAndLoss">Summed over the book.</param>
+public sealed record RiskBriefScenarioDto(string Name, double ParallelBp, double SteepenerBp, double ProfitAndLoss);
+
+/// <summary>
+/// The figures of a brief. Per-trade figures are the engine's; totals and bucket sums are those figures
+/// added up, rounded to two decimals. All amounts are in <see cref="Currency"/>.
+/// </summary>
+/// <param name="Buckets">PV change of the whole book for +1bp in each pillar's zero rate.</param>
+/// <param name="MostExposedBucketTenorYears">The bucket with the largest delta by size.</param>
+/// <param name="WorstScenarioName">The scenario with the largest loss.</param>
+public sealed record RiskBriefFiguresDto(
+    string Currency,
+    double TotalPresentValue,
+    double TotalParallelDv01,
+    IReadOnlyList<RiskBriefTradeDto> Trades,
+    IReadOnlyList<BucketDeltaDto> Buckets,
+    IReadOnlyList<RiskBriefScenarioDto> Scenarios,
+    string LargestDv01TradeId,
+    double MostExposedBucketTenorYears,
+    string WorstScenarioName);
+
+/// <param name="Status">
+/// Grounded, Withheld, Unavailable, BudgetExhausted, NotConfigured or None. Only Grounded carries text:
+/// the model's paragraph, every figure of which matched the engine results.
+/// </param>
+/// <param name="UngroundedFigures">Figures the model stated that the engine results do not support. Empty unless Withheld.</param>
+public sealed record RiskBriefCommentaryDto(string Status, string Text, IReadOnlyList<string> UngroundedFigures);
+
+/// <summary>A change the brief is waiting for a person to approve. It is exactly what will be saved.</summary>
+/// <param name="ApprovalId">
+/// Send the decision to /api/v1/risk-briefs/approvals/{approvalId}. Usable once, and only for a short
+/// time: pending approvals are held in memory, expire after 15 minutes and are lost on a restart.
+/// </param>
+public sealed record RiskBriefProposalDto(string ApprovalId, string ScenarioName, double ParallelBp, double SteepenerBp);
+
+/// <summary>One step of the brief's graph as it ran. Diagnostic: step names follow the implementation and may change.</summary>
+/// <param name="Node">The step's name, as in /api/v1/risk-briefs/graph.</param>
+/// <param name="Result">Completed or Failed.</param>
+public sealed record GraphVisitDto(string Node, string Result, double DurationMs);
+
+/// <param name="Status">
+/// Completed, WithoutCommentary, EmptyPortfolio, AwaitingApproval, ScenarioSaved or SaveDeclined.
+/// WithoutCommentary means the figures are complete and there is no paragraph; the commentary status says why.
+/// </param>
+/// <param name="Figures">Absent when the status is EmptyPortfolio.</param>
+/// <param name="PendingApproval">Present only while the status is AwaitingApproval.</param>
+/// <param name="SavedScenarioId">
+/// Present only when the status is ScenarioSaved. The API does not store scenarios yet: the id is the
+/// engine's, valid for that request only, and no route reads it back.
+/// </param>
+/// <param name="Trace">Every step that ran, in order. A step inside the repair cycle appears once per pass.</param>
+public sealed record RiskBriefResponse(
+    string Status,
+    RiskBriefFiguresDto? Figures,
+    RiskBriefCommentaryDto Commentary,
+    RiskBriefProposalDto? PendingApproval,
+    string? SavedScenarioId,
+    IReadOnlyList<GraphVisitDto> Trace,
+    ModelUsageDto Usage);
+
+/// <summary>What the model calls behind one response used, in total.</summary>
+public sealed record ModelUsageDto(int ModelCalls, long InputTokens, long OutputTokens, decimal CostUsd);
+
+/// <summary>A person's decision on a proposed change.</summary>
+/// <param name="Approved">True to make the change. Anything else, including leaving it out, declines.</param>
+public sealed record RiskBriefApprovalRequest(bool Approved);
+
+/// <param name="Kind">Start, Node, ParallelBranch, Join, Pause or End.</param>
+public sealed record GraphNodeDto(string Name, string Kind);
+
+/// <param name="Label">The condition under which the edge is taken. Empty when it is unconditional.</param>
+public sealed record GraphEdgeDto(string From, string To, string Label);
+
+/// <summary>
+/// The structure of a workflow graph, taken from the definition that runs. Diagnostic: it describes
+/// the implementation, so its node names and edges may change without a new API version.
+/// </summary>
+public sealed record GraphResponse(string Name, IReadOnlyList<GraphNodeDto> Nodes, IReadOnlyList<GraphEdgeDto> Edges);
+
 /// <summary>One page of a collection. Pass <see cref="NextCursor"/> as <c>cursor</c> to get the next; null means the end.</summary>
 public sealed record PageResponse<T>(IReadOnlyList<T> Items, string? NextCursor);

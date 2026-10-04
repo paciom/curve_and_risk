@@ -10,6 +10,7 @@
     <Project Path="src/CurveRisk.Copilot/CurveRisk.Copilot.csproj" />
     <Project Path="src/CurveRisk.Engine/CurveRisk.Engine.csproj" />
     <Project Path="src/CurveRisk.Mcp/CurveRisk.Mcp.csproj" />
+    <Project Path="src/CurveRisk.Workflows/CurveRisk.Workflows.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CurveRisk.Ai.Tests/CurveRisk.Ai.Tests.csproj" />

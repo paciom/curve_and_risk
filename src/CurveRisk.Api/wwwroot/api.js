@@ -29,6 +29,9 @@ export const api = {
   startRiskRun: (snapshotId, tradeIds) => request("POST", "/risk-runs", { snapshotId, tradeIds }),
   riskRun: id => request("GET", `/risk-runs/${id}`),
   ask: (snapshotId, question) => request("POST", "/copilot/answers", { snapshotId, question }),
+  briefGraph: () => request("GET", "/risk-briefs/graph"),
+  brief: (snapshotId, offerSave) => request("POST", "/risk-briefs", { snapshotId, offerSave }),
+  decideBrief: (approvalId, approved) => request("POST", `/risk-briefs/approvals/${encodeURIComponent(approvalId)}`, { approved }),
 };
 
 /** Polls a risk run until it leaves Pending, or gives up after about ten seconds. */

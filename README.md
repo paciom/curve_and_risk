@@ -22,6 +22,7 @@ The reports are snapshots of the latest full local run, committed so they open i
 ### AI engineering on show
 
 - 🔁 **Loop engineering.** A [script](tools/mutation-loop/loop.mjs), not a person, directs the coding agent: it picks surviving mutants, prompts the agent, reruns Stryker to check the result itself, keeps or reverts, feeds the finding back, and stops on a target, a spend cap or a stall.
+- 🕸️ **Graph engineering.** A [risk brief](src/CurveRisk.Copilot/Briefs/RiskBriefGraph.cs) written as a validated graph on a small [runtime](src/CurveRisk.Workflows): code owns the path, the engine produces every figure, the model writes one checked paragraph, and a write happens only when a person resumes the paused run.
 - 🛡️ **A guarded agent runtime.** The product agent is a [136-line loop](src/CurveRisk.Copilot/CopilotAgent.cs) with a call limit, a spend cap, human approval for writes and one bounded self-repair.
 - 🔢 **Hallucination control that is code, not a prompt.** The model never originates a number: [every figure in an answer](src/CurveRisk.Copilot/NumericGrounding.cs) must trace to a tool result or the answer is withheld.
 - 🧰 **Tool design and MCP.** [One tool catalog](src/CurveRisk.Ai.Tools/ToolCatalog.cs) serves both the in-product Copilot and an [MCP server](src/CurveRisk.Mcp) for external agents. Write tools sit behind an approval gate.
@@ -44,6 +45,8 @@ A .NET 10 pricing and risk platform built agent-first, where every rule that mat
 **Context engineering.** A small always-loaded [`CLAUDE.md`](CLAUDE.md), skills that load on demand, [reviewer subagents](.claude/agents/) that start from a clean context so the author cannot anchor them, and a hard line between trusted and untrusted text inside the product's own agent.
 
 **Loop engineering.** A [mutation-kill loop](tools/mutation-loop.mjs) in which a script writes the instruction, the coding agent writes the test, and the script decides whether it counts: only test files may change, the fast gate must pass, and Stryker must report the mutant killed. A rejected attempt is reverted and its reason becomes the next prompt. The agent's own claim of success is never read as a result. [Details](docs/ai-engineering.md#loop-engineering).
+
+**Graph engineering.** Where the Copilot loop lets the model pick each step, the [risk brief](src/CurveRisk.Copilot/Briefs/RiskBriefGraph.cs) is a fixed procedure on a hand-written [graph runtime](src/CurveRisk.Workflows): typed state, declared edges, a parallel fan-out, a bounded repair cycle and a pause for approval. The graph is validated before it can run, every exit is named, and the diagram in the docs and on the web page is generated from the definition that executes. It returns its figures even with no model configured. [Details](docs/ai-engineering.md#graph-engineering), [ADR 0002](docs/adr/0002-graph-workflows.md).
 
 **A guarded agent runtime.** The product's [136-line agent loop](src/CurveRisk.Copilot/CopilotAgent.cs) has a call limit, a spend cap, human approval for writes, verification of every answer and one bounded self-repair. [Hooks](.claude/hooks/) block, format and verify the coding agent's work in every session.
 
@@ -101,6 +104,7 @@ AI review, failure triage and a weekly security sweep run locally in Claude Code
 | A skill file | [`clean-code/SKILL.md`](.claude/skills/clean-code/SKILL.md) |
 | The loop that directs the coding agent | [`loop.mjs`](tools/mutation-loop/loop.mjs), [`mutation-loop.test.mjs`](tests/tools/mutation-loop.test.mjs) |
 | The product's agent loop | [`CopilotAgent.cs`](src/CurveRisk.Copilot/CopilotAgent.cs) |
+| A workflow as a graph | [`RiskBriefGraph.cs`](src/CurveRisk.Copilot/Briefs/RiskBriefGraph.cs), [`GraphRunner.cs`](src/CurveRisk.Workflows/GraphRunner.cs), [`RiskBriefApprovalTests.cs`](tests/CurveRisk.Ai.Tests/Briefs/RiskBriefApprovalTests.cs) |
 | The REST API | [`ApiEndpoints.cs`](src/CurveRisk.Api/Endpoints/ApiEndpoints.cs), [`TradeApiTests.cs`](tests/CurveRisk.Api.Tests/TradeApiTests.cs) |
 | The pricing library | [`CurveBootstrapper.cs`](src/CurveRisk.Analytics/Curves/CurveBootstrapper.cs), [`FINANCE.md`](FINANCE.md) |
 | A guard rail and its tests | [`protect-paths.mjs`](.claude/hooks/protect-paths.mjs), [`protect-paths.test.mjs`](tests/hooks/protect-paths.test.mjs) |

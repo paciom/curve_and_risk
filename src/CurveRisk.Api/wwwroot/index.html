@@ -64,6 +64,37 @@
       <p id="scenario-result" class="headline"></p>
     </section>
 
+    <section aria-labelledby="brief-title">
+      <h2 id="brief-title">Risk brief</h2>
+      <p class="hint">A fixed procedure run as a graph: the engine produces every figure, a model writes one paragraph, and a check decides whether that paragraph is shown. The diagram is drawn from the graph that runs.</p>
+      <form id="brief-form" class="controls">
+        <label class="inline"><input id="brief-offer-save" type="checkbox"> Offer to save the worst scenario</label>
+        <button type="submit">Run brief</button>
+      </form>
+      <figure>
+        <figcaption>Steps of the brief. <span class="key ran">ran</span> <span class="key waiting">waiting</span> <span class="key idle">not run</span></figcaption>
+        <svg id="brief-graph" viewBox="0 0 640 100" role="img" aria-label="The risk brief graph and the path the last run took"></svg>
+      </figure>
+      <div id="brief-result" hidden>
+        <p id="brief-status" class="muted"></p>
+        <p id="brief-commentary" class="answer"></p>
+        <div id="brief-approval" class="controls" hidden>
+          <span id="brief-proposal"></span>
+          <button id="brief-approve" type="button">Approve</button>
+          <button id="brief-decline" type="button" class="secondary">Decline</button>
+        </div>
+        <div id="brief-figures">
+          <p id="brief-totals" class="headline"></p>
+          <table id="brief-trades"><thead><tr><th>Trade</th><th>PV</th><th>Par (%)</th><th>DV01</th></tr></thead><tbody></tbody></table>
+          <figure>
+            <figcaption>Book PV change for +1bp in each pillar's zero rate</figcaption>
+            <svg id="brief-buckets" viewBox="0 0 640 240" role="img" aria-label="Book bucketed delta by tenor"></svg>
+          </figure>
+          <table id="brief-scenarios"><thead><tr><th>Scenario</th><th>Parallel (bp)</th><th>Steepener (bp)</th><th>P&amp;L</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </section>
+
     <section aria-labelledby="copilot-title">
       <h2 id="copilot-title">Risk Copilot</h2>
       <form id="copilot-form" class="controls">

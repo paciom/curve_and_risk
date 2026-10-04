@@ -3,6 +3,7 @@ using CurveRisk.Analytics.Curves;
 using CurveRisk.Copilot;
 using CurveRisk.Engine;
 using CurveRisk.Evals;
+using CurveRisk.Workflows;
 using NetArchTest.Rules;
 
 namespace CurveRisk.Ai.Tests;
@@ -19,6 +20,7 @@ public class ArchitectureTests
     private static readonly System.Reflection.Assembly Evals = typeof(EvalRunner).Assembly;
     private static readonly System.Reflection.Assembly Analytics = typeof(DiscountCurve).Assembly;
     private static readonly System.Reflection.Assembly Engine = typeof(AnalyticsRiskEngine).Assembly;
+    private static readonly System.Reflection.Assembly Workflows = typeof(GraphTelemetry).Assembly;
 
     [Fact]
     public void Only_the_Anthropic_adapter_types_depend_on_the_Anthropic_sdk()
@@ -58,6 +60,15 @@ public class ArchitectureTests
     }
 
     [Fact]
+    public void The_graph_runtime_knows_nothing_of_models_tools_or_pricing()
+    {
+        // It orders steps and records what ran. Anything it knew about AI or rates would be a rule
+        // that only one graph needs, in the one place every graph shares.
+        AssertNoDependency(Workflows, "CurveRisk.Ai", "CurveRisk.Copilot", "CurveRisk.Engine", "CurveRisk.Analytics", "Anthropic", "Microsoft.Extensions");
+        Assert.DoesNotContain(Workflows.GetReferencedAssemblies(), reference => reference.Name!.StartsWith("CurveRisk", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void The_agent_never_reaches_past_the_port_to_the_pricing_code()
     {
         AssertNoDependency(Copilot, "CurveRisk.Analytics", "CurveRisk.Engine");
@@ -88,12 +99,13 @@ public class ArchitectureTests
         // Output is injected (TextWriter, ILogger, telemetry). Only entry points own the console.
         AssertNoDependency(Copilot, "System.Console");
         AssertNoDependency(Tools, "System.Console");
+        AssertNoDependency(Workflows, "System.Console");
     }
 
     [Fact]
     public void Interfaces_are_named_with_an_I_prefix_and_implementations_are_sealed()
     {
-        foreach (var assembly in new[] { Tools, Copilot, Evals, Analytics, Engine })
+        foreach (var assembly in new[] { Tools, Copilot, Evals, Analytics, Engine, Workflows })
         {
             Assert.True(Types.InAssembly(assembly).That().AreInterfaces().Should().HaveNameStartingWith("I").GetResult().IsSuccessful);
 

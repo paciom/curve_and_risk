@@ -1,4 +1,5 @@
 import { api, waitForRiskRun } from "./api.js";
+import { decideBrief, initBrief, runBrief } from "./brief.js";
 import { drawBuckets, drawCurve } from "./charts.js";
 
 const DEMO_QUOTES = [["1Y", 4.05], ["2Y", 3.8], ["3Y", 3.72], ["5Y", 3.78], ["7Y", 3.88], ["10Y", 4.02], ["20Y", 4.22], ["30Y", 4.15]];
@@ -125,3 +126,7 @@ $("load-demo").addEventListener("click", guarded(loadDemo, $("load-demo"), false
 $("interpolation").addEventListener("change", guarded(loadDemo, $("load-demo"), false));
 $("scenario-form").addEventListener("submit", guarded(runScenario, $("scenario-form").querySelector("button")));
 $("copilot-form").addEventListener("submit", guarded(ask, $("copilot-form").querySelector("button")));
+$("brief-form").addEventListener("submit", guarded(() => runBrief(state.snapshotId), $("brief-form").querySelector("button")));
+$("brief-approve").addEventListener("click", guarded(() => decideBrief(true), $("brief-approve")));
+$("brief-decline").addEventListener("click", guarded(() => decideBrief(false), $("brief-decline")));
+initBrief().catch(error => setStatus(error.message));

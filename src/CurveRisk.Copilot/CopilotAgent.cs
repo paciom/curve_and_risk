@@ -12,7 +12,7 @@ namespace CurveRisk.Copilot;
 /// </summary>
 public sealed class CopilotAgent(IModelClient model, ToolExecutor tools, CopilotOptions? options = null, BudgetGuard? budget = null)
 {
-    private static readonly Lazy<string> SystemPrompt = new(LoadSystemPrompt);
+    private static readonly Lazy<string> SystemPrompt = new(() => EmbeddedPrompt.Load("system.md"));
 
     private readonly CopilotOptions _options = options ?? new CopilotOptions();
     private readonly BudgetGuard _budget = budget ?? BudgetGuard.Unlimited;
@@ -121,16 +121,5 @@ public sealed class CopilotAgent(IModelClient model, ToolExecutor tools, Copilot
         return session.TryQueueRepair(grounding, _options.MaxGroundingRepairs)
             ? null
             : session.Finish(AnswerStatus.UngroundedWithheld, CopilotMessages.Withheld, grounding, draft: text);
-    }
-
-    private static string LoadSystemPrompt()
-    {
-        const string resource = "CurveRisk.Copilot.Prompts.system.md";
-        using var stream = typeof(CopilotAgent).Assembly.GetManifestResourceStream(resource)
-            ?? throw new InvalidOperationException($"Embedded resource '{resource}' is missing.");
-        using var reader = new StreamReader(stream);
-
-        // Normalised so the prompt bytes, and therefore the cache key, do not depend on the build machine's line endings.
-        return reader.ReadToEnd().ReplaceLineEndings("\n").Trim();
     }
 }

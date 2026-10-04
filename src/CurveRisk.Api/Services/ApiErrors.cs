@@ -43,6 +43,15 @@ public sealed class PreconditionFailedException() : ApiException("The resource h
     public override string ProblemType => "precondition-failed";
 }
 
+/// <summary>The book has more trades than an operation over the whole book accepts.</summary>
+public sealed class BookTooLargeException(int limit)
+    : ApiException($"The book has more than {limit} trades, which is the most a risk brief covers.")
+{
+    public override int StatusCode => StatusCodes.Status422UnprocessableEntity;
+
+    public override string ProblemType => "book-too-large";
+}
+
 /// <summary>A feature that needs configuration the deployment does not have.</summary>
 public sealed class ServiceUnavailableException(string message) : ApiException(message)
 {

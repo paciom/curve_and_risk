@@ -5,6 +5,8 @@
   <ItemGroup>
     <PackageReference Include="Anthropic" />
     <ProjectReference Include="..\CurveRisk.Ai.Tools\CurveRisk.Ai.Tools.csproj" />
+    <ProjectReference Include="..\CurveRisk.Workflows\CurveRisk.Workflows.csproj" />
     <EmbeddedResource Include="Prompts\system.md" LogicalName="CurveRisk.Copilot.Prompts.system.md" />
+    <EmbeddedResource Include="Prompts\brief.md" LogicalName="CurveRisk.Copilot.Prompts.brief.md" />
   </ItemGroup>
 </Project>

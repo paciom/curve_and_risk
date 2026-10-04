@@ -28,7 +28,8 @@ The MCP server in `.mcp.json` runs the prebuilt Release binary: build it once wi
 | `src/CurveRisk.Api` | ASP.NET Core API under `/api/v1`: endpoints, services, EF Core persistence, the web page in `wwwroot` |
 | `src/CurveRisk.Ai.Tools` | `IRiskEngine` port and `ToolCatalog`: the one definition of every AI tool |
 | `src/CurveRisk.Mcp` | MCP stdio server exposing the catalog to external agents |
-| `src/CurveRisk.Copilot` | In-product agent: `CopilotAgent` (loop), `AskSession` (per-question state), `ToolExecutor` (approval gate), `NumericGrounding`, cost, telemetry |
+| `src/CurveRisk.Copilot` | In-product agent: `CopilotAgent` (loop), `AskSession` (per-question state), `ToolExecutor` (approval gate), `NumericGrounding`, cost, telemetry; `Briefs/` is the risk brief graph |
+| `src/CurveRisk.Workflows` | Graph runtime: builder, validation, runner, checkpoints. Depends on nothing else in the solution and on no AI package |
 | `evals/` | Dataset, deterministic graders, live runner |
 | `tests/CurveRisk.Ai.Tests` | Unit, wire-level and architecture tests, including tests of the graders themselves |
 | `tests/CurveRisk.Analytics.Tests` | Closed-form and property tests of the pricing library |

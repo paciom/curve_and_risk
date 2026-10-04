@@ -18,6 +18,7 @@ public static class ApiEndpoints
         MapMarketSnapshots(v1.MapGroup("/market-snapshots").WithTags("Market snapshots"));
         MapTrades(v1.MapGroup("/trades").WithTags("Trades"));
         MapCalculations(v1.WithTags("Calculations"));
+        MapRiskBriefs(v1.MapGroup("/risk-briefs").WithTags("Risk briefs"));
         return app;
     }
 
@@ -101,6 +102,25 @@ public static class ApiEndpoints
         group.MapGet("/risk-runs/{id:guid}", async (Guid id, RiskRunService service, CancellationToken ct) =>
             TypedResults.Ok(await service.GetAsync(id, ct).ConfigureAwait(false)))
             .ProducesProblem(StatusCodes.Status404NotFound);
+    }
+
+    private static void MapRiskBriefs(RouteGroupBuilder group)
+    {
+        group.MapPost("/", async (CreateRiskBriefRequest request, RiskBriefService briefs, CancellationToken ct) =>
+            TypedResults.Ok(await briefs.CreateAsync(request, ct).ConfigureAwait(false)))
+            .RequireRateLimiting(RiskBriefSetup.Limiter)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        group.MapPost("/approvals/{approvalId}", async (string approvalId, RiskBriefApprovalRequest request, RiskBriefService briefs, CancellationToken ct) =>
+            TypedResults.Ok(await briefs.DecideAsync(approvalId, request, ct).ConfigureAwait(false)))
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapGet("/graph", () => TypedResults.Ok(RiskBriefService.Graph));
     }
 
     private static async Task<IResult> CreateTradeAsync(
