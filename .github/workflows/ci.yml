@@ -23,8 +23,9 @@ jobs:
           node-version: 24
           cache: npm
 
+      # Lifecycle scripts are off: the lint tooling needs none, and a compromised package could use one.
       - name: Install lint tooling
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       # Fails on any known-vulnerable package, direct or transitive (NuGetAudit).
       - name: Restore
@@ -66,14 +67,30 @@ jobs:
           global-json-file: global.json
 
       - name: API tests on PostgreSQL
-        run: dotnet test --project tests/CurveRisk.Api.Tests/CurveRisk.Api.Tests.csproj
+        run: dotnet test --project tests/CurveRisk.Api.Tests/CurveRisk.Api.Tests.csproj 2>&1 | tee test.log
+
+      # Failed tests become annotations on the run, so the cause is visible without opening the log.
+      - name: Report failed tests
+        if: failure()
+        run: |
+          grep -E "^failed |Assert\.|Expected:|Actual:|Exception" test.log | head -40 | while IFS= read -r line; do
+            echo "::error title=PostgreSQL test::${line}"
+          done
 
   workflow-lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      # Each finding becomes an annotation on the run, and the job fails with actionlint's own exit
+      # code. Only stdout is captured: docker writes its image-pull progress to stderr.
       - name: actionlint
-        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.9 -color
+        run: |
+          status=0
+          docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.9 -oneline > lint.txt || status=$?
+          while IFS= read -r finding; do
+            echo "::error title=actionlint::${finding}"
+          done < lint.txt
+          exit "$status"
 
   secrets-scan:
     runs-on: ubuntu-latest

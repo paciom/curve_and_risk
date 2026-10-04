@@ -11,6 +11,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:   # the Run workflow button, for a first analysis or a retry without a commit
 
 permissions:
   contents: read
@@ -19,7 +20,7 @@ permissions:
 jobs:
   analyze:
     runs-on: ubuntu-latest
-    if: vars.SONAR_PROJECT_KEY != '' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+    if: vars.SONAR_PROJECT_KEY != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
@@ -46,16 +47,22 @@ jobs:
           /o:"${{ vars.SONAR_ORGANIZATION }}"
           /d:sonar.host.url="https://sonarcloud.io"
           /d:sonar.token="$SONAR_TOKEN"
-          /d:sonar.cs.vscoveragexml.reportsPaths="**/TestResults/coverage.xml"
+          /d:sonar.cs.vscoveragexml.reportsPaths="**/TestResults/*.coverage.xml"
           /d:sonar.exclusions="**/obj/**,**/bin/**"
-          /d:sonar.coverage.exclusions="**/Program.cs,tests/**"
+          /d:sonar.coverage.exclusions="**/Program.cs,tests/**,**/*.js,**/*.mjs,**/*.py"
           /d:sonar.qualitygate.wait=true
 
       - name: Build
         run: dotnet build CurveRisk.slnx --no-incremental
 
+      # One report per test project, as in tools/check.mjs: a shared file name lets the last project
+      # overwrite the others, and Sonar then reports a fraction of the real coverage.
       - name: Test with coverage
-        run: dotnet test --no-build --coverage --coverage-output-format xml --coverage-output coverage.xml
+        run: |
+          for project in tests/*/*.csproj; do
+            name=$(basename "$project" .csproj)
+            dotnet test --no-build --project "$project" --coverage --coverage-output-format xml --coverage-output "$name.coverage.xml"
+          done
 
       - name: End (waits for the quality gate)
         run: dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"

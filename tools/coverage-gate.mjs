@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Coverage gate. Reads every Cobertura report in a directory (one per test project), merges them,
+// Coverage gate. Reads every Cobertura report in TestResults (one per test project), merges them,
 // prints line and branch coverage per source file, and exits 1 when the totals or any single file
 // fall below the thresholds in tools/quality.config.json.
 //
-//   node tools/coverage-gate.mjs [directory containing *.cobertura.xml]
+//   node tools/coverage-gate.mjs        from the repository root, after the tests have run
 //
 // A per-file floor matters as much as the total: a high average can hide one untested file. Branch
 // coverage matters as much as line coverage: a line with an `if` can be "covered" with one outcome untested.
@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const config = JSON.parse(readFileSync(path.join(here, "quality.config.json"), "utf8")).coverage;
-const reportDirectory = process.argv[2] ?? "TestResults";
+const reportDirectory = "TestResults";
 
 function readReports(directory) {
   let names = [];
@@ -31,12 +31,13 @@ function readReports(directory) {
 }
 
 function attribute(tag, name) {
-  return new RegExp(`\\b${name}="([^"]*)"`).exec(tag)?.[1];
+  return new RegExp(String.raw`\b${name}="([^"]*)"`).exec(tag)?.[1];
 }
 
 // A line can appear in several reports and under several <class> entries (lambdas, async state
 // machines). It is covered if any of them hit it, and its branch count is the best any of them saw.
-function merge(previous = { hit: false, taken: 0, outcomes: 0 }, tag) {
+const UNSEEN = { hit: false, taken: 0, outcomes: 0 };
+function merge(previous, tag) {
   const condition = /\((\d+)\/(\d+)\)/.exec(attribute(tag, "condition-coverage") ?? "") ?? [0, 0, 0];
   return {
     hit: previous.hit || Number(attribute(tag, "hits")) > 0,
@@ -61,7 +62,7 @@ function collect(reports) {
     const lines = files.get(name) ?? new Map();
     for (const tag of cls[2].matchAll(/<line\b[^>]*>/g)) {
       const number = attribute(tag[0], "number");
-      lines.set(number, merge(lines.get(number), tag[0]));
+      lines.set(number, merge(lines.get(number) ?? UNSEEN, tag[0]));
     }
     files.set(name, lines);
   }
@@ -90,7 +91,7 @@ if (files.size === 0) {
 const total = { lines: 0, hit: 0, outcomes: 0, taken: 0 };
 const failures = [];
 console.log(`      ${"file".padEnd(56)}  line%  branch%`);
-for (const [name, lines] of [...files].sort()) {
+for (const [name, lines] of [...files].sort(([a], [b]) => a.localeCompare(b, "en"))) {
   const file = summarise(lines);
   for (const key of Object.keys(total)) total[key] += file[key];
 

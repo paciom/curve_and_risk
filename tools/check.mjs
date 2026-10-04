@@ -15,7 +15,7 @@
 //                 and the NuGet vulnerability audit all fail here
 //   test          all tests (unit, wire-level, architecture), collecting coverage
 //   coverage      line, branch and per-file thresholds from tools/quality.config.json
-//   hooks         tests of the agent guard rails
+//   hooks         tests of the agent guard rails and of the mutation loop
 
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -25,7 +25,8 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const config = JSON.parse(readFileSync(path.join(root, "tools", "quality.config.json"), "utf8"));
 const fast = process.argv.includes("--fast");
-const hookTests = readdirSync(path.join(root, "tests", "hooks")).filter(f => f.endsWith(".test.mjs")).map(f => `tests/hooks/${f}`);
+const scriptTests = ["hooks", "tools"].flatMap(dir =>
+  readdirSync(path.join(root, "tests", dir)).filter(f => f.endsWith(".test.mjs")).map(f => `tests/${dir}/${f}`));
 const eslint = "node_modules/eslint/bin/eslint.js";
 
 if (!existsSync(path.join(root, eslint))) {
@@ -57,7 +58,7 @@ const gates = [
   { name: "build", command: "dotnet", args: ["build", "CurveRisk.slnx", "-nologo", "-v", "q"], full: true },
   ...testGates,
   { name: "coverage", command: "node", args: ["tools/coverage-gate.mjs"], full: true },
-  { name: "hooks", command: "node", args: ["--test", ...hookTests], full: true },
+  { name: "hooks", command: "node", args: ["--test", ...scriptTests], full: true },
 ];
 
 for (const gate of gates.filter(g => !fast || !g.full)) {
@@ -69,6 +70,7 @@ for (const gate of gates.filter(g => !fast || !g.full)) {
     console.error(`FAIL  ${gate.name} (${seconds}s)\n\n${output.slice(-6000)}`);
     process.exit(1);
   }
-  console.log(`ok    ${gate.name.padEnd(12)} (${seconds}s)${gate.label ? `  ${gate.label}` : ""}`);
+  const label = gate.label ? `  ${gate.label}` : "";
+  console.log(`ok    ${gate.name.padEnd(12)} (${seconds}s)${label}`);
 }
 console.log(fast ? "Fast checks passed." : "All quality gates passed.");
