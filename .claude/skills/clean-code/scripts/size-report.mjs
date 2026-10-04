@@ -80,21 +80,24 @@ function functionsIn(source) {
   return found;
 }
 
-const findings = [];
-let files = 0;
-for (const root of roots) {
-  for (const file of walk(root)) {
-    files++;
-    const source = readFileSync(file, "utf8");
-    const lineCount = source.split("\n").length;
-    const shown = path.relative(process.cwd(), file).split(path.sep).join("/");
-    if (lineCount > maxFile) findings.push(`${shown}: file has ${lineCount} lines (limit ${maxFile})`);
-    for (const fn of functionsIn(source)) {
-      if (fn.lines > maxFunction) findings.push(`${shown}:${fn.startLine} ${fn.name}: ${fn.lines} lines (limit ${maxFunction})`);
-      if (fn.params > maxParams) findings.push(`${shown}:${fn.startLine} ${fn.name}: ${fn.params} parameters (limit ${maxParams})`);
-    }
+function inspect(file) {
+  const source = readFileSync(file, "utf8");
+  const shown = path.relative(process.cwd(), file).split(path.sep).join("/");
+  const found = [];
+
+  const lineCount = source.split("\n").length;
+  if (lineCount > maxFile) found.push(`${shown}: file has ${lineCount} lines (limit ${maxFile})`);
+
+  for (const fn of functionsIn(source)) {
+    if (fn.lines > maxFunction) found.push(`${shown}:${fn.startLine} ${fn.name}: ${fn.lines} lines (limit ${maxFunction})`);
+    if (fn.params > maxParams) found.push(`${shown}:${fn.startLine} ${fn.name}: ${fn.params} parameters (limit ${maxParams})`);
   }
+  return found;
 }
+
+const scanned = roots.flatMap(root => [...walk(root)]);
+const findings = scanned.flatMap(inspect);
+const files = scanned.length;
 
 for (const finding of findings) console.log(finding);
 console.log(`${files} file(s) scanned, ${findings.length} finding(s).`);

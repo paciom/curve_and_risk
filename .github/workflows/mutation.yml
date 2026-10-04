@@ -1,0 +1,46 @@
+name: mutation
+
+# Mutation testing with Stryker.NET: changes the code in small ways and checks that a test notices.
+# Coverage says a line ran; the mutation score says a test would catch it being wrong.
+#
+# Reports only: the break threshold in stryker-config.json stays at 0 until the baseline (55.6% on
+# 2026-10-04) has been reviewed and a floor agreed. The report is attached to every run.
+
+on:
+  pull_request:
+    paths: ["src/**", "evals/**", "tests/**", "stryker-config.json"]
+  schedule:
+    - cron: "11 3 * * 6"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stryker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore tools
+        run: dotnet tool restore
+
+      - name: Mutation test
+        run: dotnet stryker
+
+      - name: Summary
+        if: always()
+        run: |
+          report=$(find StrykerOutput -name "*.md" | head -1)
+          if [ -n "$report" ]; then cat "$report" >> "$GITHUB_STEP_SUMMARY"; fi
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: always()
+        with:
+          name: mutation-report
+          path: StrykerOutput/**/reports/

@@ -12,9 +12,12 @@ node tools/check.mjs
 |---|---|---|
 | format | `dotnet format --verify-no-changes` with [`.editorconfig`](../.editorconfig) | Any file is not formatted, or a style rule marked `error` is broken |
 | size | [`size-report.mjs`](../.claude/skills/clean-code/scripts/size-report.mjs) | A file exceeds 300 lines, a function 30 lines, or a signature 4 parameters |
+| lint | ESLint ([`eslint.config.mjs`](../eslint.config.mjs)) | The hook and tool scripts break a rule, including complexity, nesting and parameter limits |
+| links | [`check-links.mjs`](../tools/check-links.mjs) | A relative link in any Markdown file points at nothing |
+| suppressions | [`suppression-budget.mjs`](../tools/suppression-budget.mjs) | The number of silenced rules (`#pragma`, `SuppressMessage`, `NOSONAR`, `eslint-disable`, coverage exclusions) exceeds the recorded budget of 1 |
 | build | Roslyn with `TreatWarningsAsErrors` | Any finding from the analyzers below |
-| test | xUnit v3 on Microsoft.Testing.Platform | Any test fails |
-| coverage | [`coverage-gate.mjs`](../tools/coverage-gate.mjs) with [`quality.config.json`](../tools/quality.config.json) | Total line coverage is under 95%, or any single file is under 85% |
+| test | xUnit v3 on Microsoft.Testing.Platform | Any test fails, including the [architecture tests](../tests/CurveRisk.Ai.Tests/ArchitectureTests.cs) that turn the dependency rules in `CLAUDE.md` into assertions on the compiled assemblies |
+| coverage | [`coverage-gate.mjs`](../tools/coverage-gate.mjs) with [`quality.config.json`](../tools/quality.config.json) | Line coverage under 95%, branch coverage under 85%, or any single file under 85% |
 | hooks | `node --test` | A guard-rail test fails |
 
 ## What runs inside the build
@@ -39,16 +42,51 @@ Exceptions to rules are in `.editorconfig`, each with its reason on the same lin
 | On every build | The compiler | All analyzers |
 | Agent edits a C# file | `format-on-edit` hook | Formatting |
 | Agent tries to end its turn | `verify-on-stop` hook | Build (all analyzers) and tests |
-| `git commit` | [`.githooks/pre-commit`](../.githooks/pre-commit) | Format and size |
+| `git commit` | [`.githooks/pre-commit`](../.githooks/pre-commit) | Format, size, lint, links, suppression budget |
 | `git push` | [`.githooks/pre-push`](../.githooks/pre-push) | Full gate |
-| Pull request and `main` | [`ci.yml`](../.github/workflows/ci.yml) | Full gate, plus secret scanning with gitleaks |
-| Pull request and `main` | [`codeql.yml`](../.github/workflows/codeql.yml) | Static security analysis for C# and JavaScript (public repositories only, unless GitHub Advanced Security is enabled) |
+| Pull request and `main` | [`ci.yml`](../.github/workflows/ci.yml) | Full gate, secret scanning with gitleaks, workflow lint with actionlint |
+| Pull request and `main` | [`codeql.yml`](../.github/workflows/codeql.yml) | Static security analysis for C# and JavaScript |
+| `main` and weekly | [`scorecard.yml`](../.github/workflows/scorecard.yml) | OpenSSF Scorecard: supply-chain practices, scored externally |
+| Pull request, weekly, on demand | [`mutation.yml`](../.github/workflows/mutation.yml) | Stryker.NET mutation testing; reports the score, does not yet block |
 | Pull request and `main` | [`sonarcloud.yml`](../.github/workflows/sonarcloud.yml) | SonarQube Cloud quality gate (needs a token; see the file) |
 | Weekly | [`dependabot.yml`](../.github/dependabot.yml) | Dependency and action updates |
 
 Git hooks install themselves: [`Directory.Build.targets`](../Directory.Build.targets) sets `core.hooksPath` the first time anything is built.
 
-To make the CI checks binding, mark `quality-gate`, `secrets-scan`, `codeql` and `sonarcloud` as required status checks in the branch protection rule for `main`. That is a repository setting and cannot be done from a file.
+Every third-party action is pinned to a commit SHA, with Dependabot keeping the pins current, so a compromised tag cannot change what the pipeline runs. [`CODEOWNERS`](../.github/CODEOWNERS) names a human reviewer for the files that define what passing means: thresholds, rule configuration, agent guard rails, eval datasets and the workflows themselves.
+
+To make the CI checks binding, add a ruleset on `main` that requires a pull request, review from code owners, and the status checks `quality-gate`, `workflow-lint`, `secrets-scan` and `analyze`. That is a repository setting and cannot be done from a file.
+
+## Mutation testing
+
+Coverage says a line ran; the mutation score says a test would notice it being wrong. Stryker.NET makes small changes to the code and reruns the tests.
+
+```bash
+dotnet tool restore
+```
+
+```bash
+dotnet stryker
+```
+
+Baseline, 2026-10-04: **55.6%** (360 killed, 242 survived, 2 timed out, of 604 tested), against 96.8% line coverage. The gap is the finding: much of the code is executed by tests that do not assert on what it produced. Survivors cluster in user-facing message text, telemetry tag names and report formatting. The strongest files are the Anthropic response mapper (96%) and request mapper (80%); the weakest are telemetry (14%) and the answer and message types (14%).
+
+The break threshold is 0 for now, by decision: measure first, then agree a floor and ratchet it up. The `unit-testing` skill describes how to work through survivors.
+
+Stryker needs `"test-runner": "mtp"` for this test project. With the default VSTest runner it reports every mutant as survived, which is a tool mismatch and not a score.
+
+## AI checks
+
+AI checks advise and never block a merge. The one exception by design is the Copilot eval suite, which has a deterministic pass criterion and is off until an API key is added.
+
+| Check | Local, in Claude Code (no API key) | In CI (needs `ANTHROPIC_API_KEY` and an enabling variable) |
+|---|---|---|
+| Code review | `code-reviewer` subagent, `review-code` skill | [`claude-review.yml`](../.github/workflows/claude-review.yml), `ENABLE_CLAUDE_REVIEW` |
+| Security review | `security-reviewer` subagent, `review-security` skill | [`claude-security-sweep.yml`](../.github/workflows/claude-security-sweep.yml), `ENABLE_CLAUDE_SWEEP` |
+| Failure diagnosis | `debug-systematically` skill | [`claude-triage.yml`](../.github/workflows/claude-triage.yml), `ENABLE_CLAUDE_TRIAGE` |
+| Copilot evals | Not available without a key | [`copilot-evals.yml`](../.github/workflows/copilot-evals.yml), `ENABLE_LIVE_EVALS` |
+
+The reviewers themselves are measured: [`benchmarks/reviewer`](../benchmarks/reviewer/README.md) scores them against planted defects.
 
 ## Changing a threshold
 

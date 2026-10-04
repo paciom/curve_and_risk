@@ -1,0 +1,9 @@
+[extend]
+useDefault = true
+
+# The reviewer benchmark contains planted defects, including a fake hard-coded key, on purpose.
+[allowlist]
+description = "Planted defects for the AI reviewer benchmark"
+paths = [
+  '''benchmarks/reviewer/cases/''',
+]

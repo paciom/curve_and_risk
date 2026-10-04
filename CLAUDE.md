@@ -43,7 +43,11 @@ Enforced by tools; see `docs/quality-gates.md`. Run `node tools/check.mjs` befor
 
 - The build runs the .NET analyzers, SonarAnalyzer (SonarQube rules), code metrics (cyclomatic complexity 10) and a banned-API list. A finding is a compile error.
 - Fix the code, not the rule. Do not add `#pragma warning disable`, `[SuppressMessage]`, or lower a severity or threshold to get a build through. If a rule is wrong for a case, say so and let the user decide; an agreed exception goes in `.editorconfig` with its reason.
-- Coverage must stay at or above 95% in total and 85% per file (`tools/quality.config.json`). New code comes with its tests.
+- Coverage must stay at or above 95% lines, 85% branches and 85% lines per file (`tools/quality.config.json`). New code comes with its tests.
+- `tests/CurveRisk.Ai.Tests/ArchitectureTests.cs` enforces the dependency rules below on the compiled assemblies. A failure there means the design rule was broken, not that the test needs updating.
+- The suppression budget is 1 and it is used. Any new `#pragma`, `SuppressMessage`, `NOSONAR` or `eslint-disable` fails the gate.
+- For a change of more than a few files, get a `code-reviewer` pass on the diff before reporting it done, and a `security-reviewer` pass when it touches input handling, auth, secrets, files or the network. Reviews advise; the gate decides.
+- After changing a review skill or reviewer brief, re-run `benchmarks/reviewer` and compare with its baseline.
 - `DateTime.Now`, `Thread.Sleep`, `.Result` and `.Wait()` are banned: inject `TimeProvider`, and await.
 
 ## Working rules

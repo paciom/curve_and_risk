@@ -1,0 +1,26 @@
+# The files that define what "passing" means need a named human reviewer.
+# With "Require review from Code Owners" enabled on main, a change to any of these cannot merge on
+# automated checks alone, whoever (or whatever) wrote it.
+
+*                               @paciom
+
+# Quality thresholds and rule configuration
+/tools/quality.config.json      @paciom
+/.editorconfig                  @paciom
+/CodeMetricsConfig.txt          @paciom
+/BannedSymbols.txt              @paciom
+/Directory.Build.props          @paciom
+/stryker-config.json            @paciom
+
+# Agent guard rails and instructions
+/.claude/hooks/                 @paciom
+/.claude/settings.json          @paciom
+/CLAUDE.md                      @paciom
+
+# Expected answers
+/evals/datasets/                @paciom
+/benchmarks/                    @paciom
+
+# The pipeline itself
+/.github/                       @paciom
+/.githooks/                     @paciom

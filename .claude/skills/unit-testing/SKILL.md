@@ -77,6 +77,15 @@ public void Refund_larger_than_the_payment_is_rejected()
 
 If the project enforces a coverage threshold, treat a failure as "which behaviour is untested?", never as "which lines can I execute?", and never lower the threshold or add an exclusion to pass.
 
+## Mutation testing
+
+Coverage says a line ran. A mutation tool changes the code (flips a comparison, removes a statement, swaps a constant) and reruns the tests: a mutant that no test notices has *survived*, and marks behaviour nobody is checking.
+
+1. Run the tool the project uses (here: `dotnet stryker`; the report lands in `StrykerOutput/`).
+2. Read the survivors, grouped by file. For each, ask what observable behaviour differs between the original and the mutant, and write the test that asserts it.
+3. Some survivors are equivalent (the mutant behaves identically, such as changing `<` to `<=` where equality cannot occur). Say so and leave them; do not contort a test to kill one.
+4. Never exclude a file or disable a mutator to raise the score.
+
 ## Never
 
 - Weaken an assertion, widen a tolerance, or delete a test to get to green. A failing test is information: decide whether the code or the expectation is wrong, and say which.

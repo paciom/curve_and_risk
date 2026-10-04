@@ -38,7 +38,7 @@ A model's output is a proposal. What makes it usable is everything around the mo
 | `src/CurveRisk.Mcp` | MCP stdio server over the catalog |
 | `src/CurveRisk.Copilot` | Agent loop, approval gate, grounding check, budget, telemetry, Anthropic adapter, system prompt |
 | `evals/` | Dataset, graders, live runner; `copilot-evals.yml` runs it on relevant changes |
-| `tests/CurveRisk.Ai.Tests` | 107 tests, no network: guardrails, loop, wire format, and tests that each grader can fail |
+| `tests/CurveRisk.Ai.Tests` | 119 tests, no network: guardrails, loop, wire format, and tests that each grader can fail |
 | `tests/hooks` | 22 tests of the path guard hook, run the way the harness runs it |
 
 ## The loop
@@ -77,6 +77,14 @@ Each became a failing test first, then a fix: the checker now treats every digit
 Two findings were not fixed in code because the fix is a dataset change, and the dataset is protected from agent edits: the `save-declined` case would pass a model that falsely claims it saved, and two cases would pass an answer that spells a number out in words. They are listed in the README as open items for a person to decide.
 
 **The code failed its own standard, and was refactored.** When the general `clean-code` skill was added, its size check was run on the existing code and reported an 88-line agent loop, a 51-line parsing method, a 43-line adapter method and a 320-line file. Following `refactor-safely`, the loop was split into a stateless `CopilotAgent`, an `AskSession` holding per-question state and a `ToolExecutor` owning the approval gate; number parsing moved into `NumberToken`. The 107 tests were green before and after, and no assertion was changed; only the two places that construct the agent were updated. The size check now reports nothing and runs in CI.
+
+**Deterministic tools found what AI review had passed.** Switching on SonarAnalyzer, the .NET analyzers and code metrics as build errors produced 12 violations in code that had already been through an AI review: a property with cyclomatic complexity 21, an adapter coupled to 73 types, a parameter named with a reserved word. They were fixed in the code. AI review and static analysis find different things, which is the argument for running both and letting only the deterministic one decide.
+
+**The guard rail held against its own author.** Asked to make the agent's stop hook run the full quality gate, the agent's edit was refused by `protect-paths`, the hook that stops an agent changing its own guard rails. The change was handed to the repository owner instead.
+
+**The AI reviewers were scored.** `benchmarks/reviewer` holds ten code samples with ten planted defects and two clean files. Both reviewers found every defect assigned to them and raised no serious false alarm. `code-reviewer` also reported a length-limit bug in a file planted as clean; it was right, and the sample was fixed. A perfect score mostly shows the benchmark is too easy, and that is recorded in its baseline.
+
+**Mutation testing corrected the picture coverage gave.** Line coverage was 96.8%. The first mutation run killed 55.6% of 604 mutants: many tests execute code without asserting on its result, mostly message text, telemetry tags and report formatting. The first attempt reported 0%, which was a runner mismatch (Stryker's default runner does not drive this test platform) and was treated as a tool failure, not published as a score.
 
 **What was not verified.** No Anthropic credentials were available, so the Copilot has never talked to the live model and the eval suite has never run. The adapter's request format is checked against the SDK's own serialisation, not against the API. The three GitHub workflows are syntactically valid and unexecuted. None of the 18 eval cases has a baseline. The review fixes were not themselves re-reviewed by a second independent pass.
 

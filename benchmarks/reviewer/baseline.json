@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-04",
+  "runsPerReviewer": 1,
+  "results": [
+    {
+      "reviewer": "code-reviewer",
+      "role": "code",
+      "plantedDefectsOwned": 7,
+      "found": 7,
+      "recall": 1.0,
+      "seriousFindingsOnCleanFiles": 0,
+      "unmatchedSeriousFindings": 0,
+      "findings": "runs/2026-10-04-code-reviewer.json"
+    },
+    {
+      "reviewer": "security-reviewer",
+      "role": "security",
+      "plantedDefectsOwned": 5,
+      "found": 5,
+      "recall": 1.0,
+      "seriousFindingsOnCleanFiles": 0,
+      "unmatchedSeriousFindings": 0,
+      "findings": "runs/2026-10-04-security-reviewer.json"
+    }
+  ],
+  "notes": [
+    "A perfect score on ten samples says the benchmark is too easy to separate a good reviewer from a very good one. Harder, subtler cases are the next addition.",
+    "code-reviewer reported a Minor finding in SlugGenerator.cs, a file planted as clean: the length limit could be exceeded by one character. The finding was correct. The sample was fixed after the run, so the stored findings refer to the earlier version of that file.",
+    "One anchor in expected.json for PriceCache.cs did not match the file text and was corrected after the run. The reviewer's finding (the unsynchronised dictionary, line 7) was unchanged; only the answer key was fixed.",
+    "security-reviewer also reported the refund overpayment in RefundService.cs, which is owned by the code role; it is not counted for or against it."
+  ]
+}

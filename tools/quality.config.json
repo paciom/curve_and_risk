@@ -2,10 +2,15 @@
   "coverage": {
     "minLinePercent": 95,
     "minFileLinePercent": 85,
+    "minBranchPercent": 85,
     "include": ["src/", "evals/"],
     "exclude": ["/obj/", "/Program.cs"]
   },
   "size": {
     "directories": ["src", "evals", "tests"]
+  },
+  "suppressions": {
+    "max": 1,
+    "directories": ["src", "evals", "tests", "tools", ".claude"]
   }
 }

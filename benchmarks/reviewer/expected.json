@@ -1,0 +1,16 @@
+{
+  "description": "Planted defects. Each is located by an anchor string so line numbers cannot drift. A finding counts as a hit when it names the file and a line within the window around an anchor.",
+  "defects": [
+    { "id": "refund-exceeds-payment", "file": "RefundService.cs", "anchors": ["gateway.RefundAsync(payment.GatewayId", "payment.RefundedAmount += amount"], "before": 6, "after": 3, "owners": ["code"], "kind": "Missing check that the refund does not exceed the amount captured less already refunded" },
+    { "id": "sql-injection-order-by", "file": "UserRepository.cs", "anchors": ["ORDER BY {sortColumn}"], "before": 4, "after": 2, "owners": ["security", "code"], "kind": "SQL injection through an interpolated ORDER BY column" },
+    { "id": "path-traversal", "file": "ReportExporter.cs", "anchors": ["Path.Combine(exportRoot, reportName)"], "before": 3, "after": 8, "owners": ["security"], "kind": "Path traversal: reportName can escape exportRoot" },
+    { "id": "unsynchronised-cache", "file": "PriceCache.cs", "anchors": ["private readonly Dictionary<string", "_entries.TryGetValue", "_entries[sku] ="], "before": 3, "after": 3, "owners": ["code"], "kind": "Dictionary mutated concurrently in a singleton" },
+    { "id": "sync-over-async", "file": "InvoiceMailer.cs", "anchors": ["CancellationToken.None).Result", "GetAwaiter().GetResult()"], "before": 3, "after": 2, "owners": ["code"], "kind": "Blocking on async calls" },
+    { "id": "swallowed-exception", "file": "InvoiceMailer.cs", "anchors": ["catch (Exception)"], "before": 2, "after": 3, "owners": ["code"], "kind": "Exception swallowed; failures are invisible" },
+    { "id": "off-by-one-page", "file": "Pagination.cs", "anchors": ["var start = pageNumber * pageSize"], "before": 2, "after": 4, "owners": ["code"], "kind": "1-based page treated as 0-based; page 1 skips the first page of items" },
+    { "id": "hard-coded-secret", "file": "WebhookVerifier.cs", "anchors": ["private const string SigningKey"], "before": 2, "after": 2, "owners": ["security"], "kind": "Signing key committed in source" },
+    { "id": "timing-unsafe-compare", "file": "WebhookVerifier.cs", "anchors": ["return expected == signatureHeader"], "before": 2, "after": 2, "owners": ["security"], "kind": "Signature compared with a non-constant-time equality" },
+    { "id": "idor-read", "file": "DocumentEndpoints.cs", "anchors": ["public async Task<ActionResult<DocumentDto>> Get", "return new DocumentDto("], "before": 2, "after": 3, "owners": ["security", "code"], "kind": "Read endpoint returns any user's document; ownership is checked on delete only" }
+  ],
+  "cleanFiles": ["SlugGenerator.cs", "RetryPolicy.cs"]
+}
