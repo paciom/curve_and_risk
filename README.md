@@ -10,9 +10,9 @@
 
 **One engineer. A team of AI agents. A production-shaped pricing and risk platform, with the test evidence to back it.**
 
-| 🧪 99.9% / 98% | 🎯 92% | 🛡️ 0 | 🤖 706 |
+| 🧪 99.8% / 98% | 🎯 92% | 🛡️ 0 | 🤖 844 |
 |:---:|:---:|:---:|:---:|
-| **line / branch coverage**, enforced as a gate | **of 1,483 injected faults caught** by the tests (mutation score), up from a first baseline of 55.6% | **analyzer findings**, and one suppressed rule in the whole codebase, with a budget that blocks a second | **tests**, all offline: 655 .NET, 22 on the agent guard rails and 29 on the loop that directs the agent |
+| **line / branch coverage**, enforced as a gate | **of 1,483 injected faults caught** by the tests (mutation score), up from a first baseline of 55.6% | **analyzer findings**, and one suppressed rule in the whole codebase, with a budget that blocks a second | **tests**, all offline: 793 .NET, 22 on the agent guard rails and 29 on the loop that directs the agent |
 | [📄 coverage report](docs/reports/coverage.md) | [📄 mutation report](docs/reports/mutation.md) | enforced at [build](https://github.com/paciom/curve_and_risk/actions/workflows/ci.yml); scanned by [CodeQL](https://github.com/paciom/curve_and_risk/actions/workflows/codeql.yml) | [📄 test report](docs/reports/coverage.md#tests) |
 
 [![Stryker.NET mutation report: 1,365 mutants detected, 117 survived](docs/reports/mutation-report.png)](docs/reports/mutation.md)
@@ -23,7 +23,7 @@ The reports are snapshots of the latest full local run, committed so they open i
 
 - 🔁 **Loop engineering.** A [script](tools/mutation-loop/loop.mjs), not a person, directs the coding agent: it picks surviving mutants, prompts the agent, reruns Stryker to check the result itself, keeps or reverts, feeds the finding back, and stops on a target, a spend cap or a stall.
 - 🕸️ **Graph engineering.** A [risk brief](src/CurveRisk.Copilot/Briefs/RiskBriefGraph.cs) written as a validated graph on a small [runtime](src/CurveRisk.Workflows): code owns the path, the engine produces every figure, the model writes one checked paragraph, and a write happens only when a person resumes the paused run.
-- 🛡️ **A guarded agent runtime.** The product agent is a [136-line loop](src/CurveRisk.Copilot/CopilotAgent.cs) with a call limit, a spend cap, human approval for writes and one bounded self-repair.
+- 🛡️ **A guarded agent runtime.** The product agent is a [125-line loop](src/CurveRisk.Copilot/CopilotAgent.cs) with a call limit, a spend cap, human approval for writes and one bounded self-repair.
 - 🔢 **Hallucination control that is code, not a prompt.** The model never originates a number: [every figure in an answer](src/CurveRisk.Copilot/NumericGrounding.cs) must trace to a tool result or the answer is withheld.
 - 🧰 **Tool design and MCP.** [One tool catalog](src/CurveRisk.Ai.Tools/ToolCatalog.cs) serves both the in-product Copilot and an [MCP server](src/CurveRisk.Mcp) for external agents. Write tools sit behind an approval gate.
 - 📏 **Evals.** A [dataset with deterministic graders](evals/) for the product agent, and a [benchmark](benchmarks/reviewer/) that scores the AI reviewers against planted defects: 12 of 12 found, no false alarms. The graders have tests showing they can fail.
@@ -48,7 +48,7 @@ A .NET 10 pricing and risk platform built agent-first, where every rule that mat
 
 **Graph engineering.** Where the Copilot loop lets the model pick each step, the [risk brief](src/CurveRisk.Copilot/Briefs/RiskBriefGraph.cs) is a fixed procedure on a hand-written [graph runtime](src/CurveRisk.Workflows): typed state, declared edges, a parallel fan-out, a bounded repair cycle and a pause for approval. The graph is validated before it can run, every exit is named, and the diagram in the docs and on the web page is generated from the definition that executes. It returns its figures even with no model configured. [Details](docs/ai-engineering.md#graph-engineering), [ADR 0002](docs/adr/0002-graph-workflows.md).
 
-**A guarded agent runtime.** The product's [136-line agent loop](src/CurveRisk.Copilot/CopilotAgent.cs) has a call limit, a spend cap, human approval for writes, verification of every answer and one bounded self-repair. [Hooks](.claude/hooks/) block, format and verify the coding agent's work in every session.
+**A guarded agent runtime.** The product's [125-line agent loop](src/CurveRisk.Copilot/CopilotAgent.cs) has a call limit, a spend cap, human approval for writes, verification of every answer and one bounded self-repair. [Hooks](.claude/hooks/) block, format and verify the coding agent's work in every session.
 
 **Prompt engineering, and its limits.** [Prompts](src/CurveRisk.Copilot/Prompts/system.md) that explain why. Then a control outside the prompt for everything that must hold, because a prompt asks and does not enforce.
 
@@ -117,10 +117,10 @@ AI review, failure triage and a weekly security sweep run locally in Claude Code
 
 ## Status
 
-Built: the pricing library, a versioned REST API with persistence, a small web page, the AI layer (MCP server, Copilot, evals), the agent harness, the mutation-kill loop and the quality pipeline. Run it with `dotnet run --project src/CurveRisk.Api` and open the URL it prints.
+Built: the pricing library, a versioned REST API with persistence, a small web page, the AI layer (MCP server, Copilot, a risk brief run as a graph, evals), the agent harness, the mutation-kill loop and the quality pipeline. Run it with `dotnet run --project src/CurveRisk.Api` and open the URL it prints.
 
 [Planned](PLAN.md), not built: database migrations, market-data imports, Aspire orchestration, and the step that deploys the published image to a cloud.
 
-Not yet verified: the product agent has not been run against a live model (no API key yet), so its evals have no baseline; the mutation-kill loop is tested against a scripted agent and one real Stryker measurement, and has not yet driven a live agent, so it has no ledger; the PostgreSQL job has not run in CI; the pricing library is checked by closed forms and an independent re-derivation, not yet against QuantLib.
+Not yet verified: the product agent has not been run against a live model (no API key yet), so its evals have no baseline; the mutation-kill loop is tested against a scripted agent and one real Stryker measurement, and has not yet driven a live agent, so it has no ledger; the PostgreSQL job has not run in CI; the pricing library is checked by closed forms and an independent re-derivation, not yet against QuantLib; the graph runtime and the risk brief were added after the last mutation run, so the mutation score above does not cover them, and the brief's commentary step has not run against a live model.
 
 **Stack:** .NET 10 and .NET Standard 2.0 · C# · ASP.NET Core · EF Core · PostgreSQL · xUnit v3 · Anthropic SDK · Model Context Protocol · OpenTelemetry · Stryker.NET · SonarAnalyzer · SonarQube Cloud · CodeQL · Docker · GitHub Actions · Claude Code
