@@ -6,20 +6,33 @@
 
 **AI agents write the code. Engineering makes it trustworthy.**
 
+## ⚡ At a glance
+
+**One engineer. A team of AI agents. A production-shaped pricing and risk platform, with the test evidence to back it.**
+
+| 🧪 99.9% / 98.1% | 🎯 92% | 🛡️ 0 | 🤖 677 |
+|:---:|:---:|:---:|:---:|
+| **line / branch coverage**, enforced as a gate | **of 1,483 injected faults caught** by the tests (mutation score), up from a first baseline of 55.6% | **analyzer findings**, and one suppressed rule in the whole codebase, with a budget that blocks a second | **tests**, all offline: 655 .NET and 22 on the agent guard rails |
+| [coverage report](https://github.com/paciom/curve_and_risk/actions/workflows/ci.yml) | [mutation report](https://github.com/paciom/curve_and_risk/actions/workflows/mutation.yml) | [build](https://github.com/paciom/curve_and_risk/actions/workflows/ci.yml) · [CodeQL](https://github.com/paciom/curve_and_risk/actions/workflows/codeql.yml) · [SonarQube](https://github.com/paciom/curve_and_risk/actions/workflows/sonarcloud.yml) | [test runs](https://github.com/paciom/curve_and_risk/actions/workflows/ci.yml) |
+
+Each link opens the CI workflow that produces the report; the coverage and mutation reports are attached to every run as artifacts. [How each gate works](docs/quality-gates.md).
+
+### AI engineering on show
+
+- 🔁 **Agent loop engineering.** A [136-line loop](src/CurveRisk.Copilot/CopilotAgent.cs) with a call limit, a spend cap, human approval for writes and one bounded self-repair.
+- 🔢 **Hallucination control that is code, not a prompt.** The model never originates a number: [every figure in an answer](src/CurveRisk.Copilot/NumericGrounding.cs) must trace to a tool result or the answer is withheld.
+- 🧰 **Tool design and MCP.** [One tool catalog](src/CurveRisk.Ai.Tools/ToolCatalog.cs) serves both the in-product Copilot and an [MCP server](src/CurveRisk.Mcp) for external agents. Write tools sit behind an approval gate.
+- 📏 **Evals.** A [dataset with deterministic graders](evals/) for the product agent, and a [benchmark](benchmarks/reviewer/) that scores the AI reviewers against planted defects: 12 of 12 found, no false alarms. The graders have tests showing they can fail.
+- 🧠 **Context and prompt engineering.** A small always-loaded [`CLAUDE.md`](CLAUDE.md), thirteen on-demand [skills](.claude/skills/), a cache-stable system prompt, and untrusted text kept apart from instructions.
+- 👥 **Multi-agent orchestration.** Six [reviewer subagents](.claude/agents/) that start from a clean context, and parallel agents in isolated worktrees: one session took the mutation score from 70% to 92% and surfaced a real bug.
+- 🚧 **Guard rails for the coding agent itself.** [Hooks](.claude/hooks/) block edits to expected answers, thresholds and the hooks themselves, and verify the build before the agent may stop.
+- 🔌 **Provider-independent and observable.** The SDK lives behind [one interface](src/CurveRisk.Copilot/IModelClient.cs), so the agent is tested offline; spans, token usage and cost are emitted as OpenTelemetry GenAI telemetry.
+
+---
+
 A .NET 10 pricing and risk platform built agent-first, where every rule that matters is enforced by something other than a prompt: a hook, a compiler error, a test, a threshold, or a human approval.
 
 *This page is about the software and AI engineering. The financial domain is in [FINANCE.md](FINANCE.md).*
-
-## The numbers
-
-| | |
-|---|---|
-| **98.2% line, 91.9% branch** | coverage, enforced as a gate |
-| **70.2% mutation score** | the honest measure of test strength: 1,426 mutants, up from a first baseline of 55.6% |
-| **315 tests** | 293 .NET and 22 on the agent guard rails; no network, no credentials |
-| **0 analyzer findings** | SonarQube rules, .NET analyzers, complexity limits and banned APIs, all compile errors |
-| **12 of 12** | planted defects found by the AI reviewers in a scored benchmark, with no false alarms |
-| **1** | rule suppression in the whole codebase, justified in writing, with a budget that blocks a second |
 
 ## What this demonstrates
 
@@ -27,7 +40,7 @@ A .NET 10 pricing and risk platform built agent-first, where every rule that mat
 
 **Context engineering.** A small always-loaded [`CLAUDE.md`](CLAUDE.md), skills that load on demand, [reviewer subagents](.claude/agents/) that start from a clean context so the author cannot anchor them, and a hard line between trusted and untrusted text inside the product's own agent.
 
-**Loop engineering.** A [130-line agent loop](src/CurveRisk.Copilot/CopilotAgent.cs) with a call limit, a spend cap, human approval for writes, verification of every answer and one bounded self-repair. Around it, a development loop where [hooks](.claude/hooks/) block, format and verify the coding agent's work.
+**Loop engineering.** A [136-line agent loop](src/CurveRisk.Copilot/CopilotAgent.cs) with a call limit, a spend cap, human approval for writes, verification of every answer and one bounded self-repair. Around it, a development loop where [hooks](.claude/hooks/) block, format and verify the coding agent's work.
 
 **Prompt engineering, and its limits.** [Prompts](src/CurveRisk.Copilot/Prompts/system.md) that explain why. Then a control outside the prompt for everything that must hold, because a prompt asks and does not enforce.
 
@@ -47,7 +60,7 @@ A .NET 10 pricing and risk platform built agent-first, where every rule that mat
 
 **The code failed its own standard and was refactored.** The size check flagged an 88-line agent loop. It was split into three small classes with every test green before and after.
 
-**Coverage flattered the tests, and mutation testing said so.** With 96.8% of lines covered, the first mutation run caught only 55.6% of injected faults: tests were executing code without asserting on it. The score is now measured, published and tracked, and stands at 70.2%.
+**Coverage flattered the tests, and mutation testing said so.** With 96.8% of lines covered, the first mutation run caught only 55.6% of injected faults: tests were executing code without asserting on it. The score is now measured, published and tracked. Survivors were then worked through file by file, each one answered with a test of the behaviour it exposed, and it stands at 92.0%; most of what remains cannot be detected by any test. Writing those tests found a request that returned a 500 where it owed the caller a 409, now fixed.
 
 **An independent reviewer re-derived the numbers.** A reviewer subagent rebuilt the demo curve from scratch in a separate language and matched the pricing library to the cent. It then found two inputs the library would have silently mispriced, a swap already under way and a deposit that had already started. Both are now refused with a clear error, with tests.
 
