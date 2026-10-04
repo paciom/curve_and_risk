@@ -123,6 +123,21 @@ public sealed class MarketSnapshotApiTests(ApiFactory factory) : IClassFixture<A
         Assert.Contains(id.ToString(), problem.GetProperty("detail").GetString(), StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("/", "text/html", "<title>Curve &amp; Risk</title>")]
+    [InlineData("/app.js", "text/javascript", "loadDemo")]
+    [InlineData("/charts.js", "text/javascript", "drawCurve")]
+    [InlineData("/api.js", "text/javascript", "/api/v1")]
+    [InlineData("/app.css", "text/css", "--series")]
+    public async Task The_web_page_and_its_assets_are_served(string path, string mediaType, string marker)
+    {
+        var response = await _client.GetAsync(path, Ct);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(mediaType, response.Content.Headers.ContentType!.MediaType);
+        Assert.Contains(marker, await response.Content.ReadAsStringAsync(Ct), StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task The_service_describes_itself_and_reports_health()
     {

@@ -44,7 +44,7 @@ Exceptions to rules are in `.editorconfig`, each with its reason on the same lin
 | Agent tries to end its turn | `verify-on-stop` hook | Build (all analyzers) and tests |
 | `git commit` | [`.githooks/pre-commit`](../.githooks/pre-commit) | Format, size, lint, links, suppression budget |
 | `git push` | [`.githooks/pre-push`](../.githooks/pre-push) | Full gate |
-| Pull request and `main` | [`ci.yml`](../.github/workflows/ci.yml) | Full gate, secret scanning with gitleaks, workflow lint with actionlint |
+| Pull request and `main` | [`ci.yml`](../.github/workflows/ci.yml) | Full gate, the API tests again on PostgreSQL, secret scanning with gitleaks, workflow lint with actionlint |
 | Pull request and `main` | [`codeql.yml`](../.github/workflows/codeql.yml) | Static security analysis for C# and JavaScript |
 | `main` and weekly | [`scorecard.yml`](../.github/workflows/scorecard.yml) | OpenSSF Scorecard: supply-chain practices, scored externally |
 | Pull request, weekly, on demand | [`mutation.yml`](../.github/workflows/mutation.yml) | Stryker.NET mutation testing; reports the score, does not yet block |
@@ -71,7 +71,7 @@ dotnet stryker
 
 First baseline, 2026-10-04: **55.6%** (360 killed of 604), against 96.8% line coverage. The gap is the finding: much of the code was executed by tests that did not assert on what it produced. Survivors cluster in user-facing message text, telemetry tag names and report formatting.
 
-Current, with the pricing library and its closed-form tests added: **71.6%** (778 killed, 260 survived, 7 timed out, of 1,045 tested).
+With the pricing library and its closed-form tests added: 71.6% of 1,045. Current, with the API added: **70.2%** (1,033 killed, 386 survived, 7 timed out, of 1,426 tested). A full run takes about eleven minutes.
 
 The break threshold is 0 for now, by decision: measure first, then agree a floor and ratchet it up. The `unit-testing` skill describes how to work through survivors.
 

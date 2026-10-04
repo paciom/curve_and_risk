@@ -28,6 +28,22 @@ public sealed class CopilotConfigurationTests(ApiFactory factory) : IClassFixtur
     }
 
     [Fact]
+    public async Task The_schema_is_not_created_on_start_when_the_deployment_says_it_manages_it()
+    {
+        await using var managed = factory.WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("ConnectionStrings:CurveRisk", $"Data Source=file:managed-{Guid.NewGuid():N}?mode=memory&cache=shared");
+            builder.UseSetting("Database:CreateOnStart", "false");
+        });
+
+        var response = await managed.CreateClient().GetAsync("/api/v1/trades", TestContext.Current.CancellationToken);
+
+        // No table was created, so the query fails; the caller sees a 500 with no internal detail.
+        Assert.Equal(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.DoesNotContain("no such table", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task With_a_provider_configured_the_container_supplies_and_owns_the_model_client()
     {
         await using var configured = factory.WithWebHostBuilder(builder =>

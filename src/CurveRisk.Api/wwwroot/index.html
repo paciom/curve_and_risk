@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Curve &amp; Risk</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header>
+    <h1>Curve &amp; Risk</h1>
+    <p>USD SOFR curve calibration, swap pricing and risk. Every number on this page comes from the pricing engine through <a href="/openapi/v1.json">the REST API</a>.</p>
+  </header>
+
+  <main>
+    <section aria-labelledby="market-title">
+      <h2 id="market-title">Market</h2>
+      <div class="controls">
+        <label>Interpolation
+          <select id="interpolation">
+            <option value="LogLinearDiscount">Log-linear discount factor</option>
+            <option value="LinearZero">Linear zero rate</option>
+            <option value="MonotoneCubicLogDiscount">Monotone cubic</option>
+          </select>
+        </label>
+        <button id="load-demo" type="button">Load demo market and book</button>
+        <span id="status" role="status"></span>
+      </div>
+      <figure>
+        <figcaption>Zero rates, continuously compounded (%)</figcaption>
+        <svg id="curve-chart" viewBox="0 0 640 240" role="img" aria-label="Zero rate by tenor"></svg>
+      </figure>
+      <details>
+        <summary>Curve as a table</summary>
+        <table id="curve-table"><thead><tr><th>Tenor (years)</th><th>Zero rate (%)</th><th>Discount factor</th></tr></thead><tbody></tbody></table>
+      </details>
+    </section>
+
+    <section aria-labelledby="book-title">
+      <h2 id="book-title">Book</h2>
+      <table id="trades-table">
+        <thead><tr><th>Trade</th><th>Direction</th><th>Notional</th><th>Fixed (%)</th><th>Tenor</th><th>Par (%)</th><th>PV (USD)</th><th>Description</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="hint">Select a trade to see its risk and to run scenarios on it.</p>
+    </section>
+
+    <section aria-labelledby="risk-title">
+      <h2 id="risk-title">Risk <span id="risk-trade" class="muted"></span></h2>
+      <p id="risk-summary" class="headline"></p>
+      <figure>
+        <figcaption>PV change for +1bp in each pillar's zero rate (USD)</figcaption>
+        <svg id="risk-chart" viewBox="0 0 640 240" role="img" aria-label="Bucketed delta by tenor"></svg>
+      </figure>
+    </section>
+
+    <section aria-labelledby="scenario-title">
+      <h2 id="scenario-title">Scenario</h2>
+      <form id="scenario-form" class="controls">
+        <label>Parallel shift (bp) <input id="parallel" type="number" value="50" step="1"></label>
+        <label>2s10s steepener (bp) <input id="steepener" type="number" value="0" step="1"></label>
+        <button type="submit">Reprice</button>
+      </form>
+      <p id="scenario-result" class="headline"></p>
+    </section>
+
+    <section aria-labelledby="copilot-title">
+      <h2 id="copilot-title">Risk Copilot</h2>
+      <form id="copilot-form" class="controls">
+        <label class="grow">Question <input id="question" type="text" maxlength="2000" placeholder="What is the DV01 of T-1001?"></label>
+        <button type="submit">Ask</button>
+      </form>
+      <div id="copilot-answer" class="answer" hidden>
+        <p id="copilot-status" class="muted"></p>
+        <p id="copilot-text"></p>
+        <p id="copilot-tools" class="muted"></p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

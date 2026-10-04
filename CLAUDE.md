@@ -2,12 +2,13 @@
 
 Interest-rate curve calibration and risk platform. .NET 10, ASP.NET Core, PostgreSQL, Aspire. See `PLAN.md` for scope and phases, `docs/adr/` for decisions, `docs/ai-workflow.md` for how agents are used here.
 
-Built so far: the pricing library, the engine that exposes it, the AI layer (tools, MCP server, Copilot, evals) and the quality pipeline. Not yet built: REST API, database, web UI.
+Built so far: the pricing library, the engine that exposes it, the REST API with persistence and a small web page, the AI layer (tools, MCP server, Copilot, evals) and the quality pipeline. Not yet built: database migrations, market-data imports, Aspire orchestration, deployment.
 
 ## Commands
 
 ```bash
 node tools/check.mjs                 # THE quality gate: format, size, build+analyzers, tests, coverage, hook tests
+dotnet run --project src/CurveRisk.Api   # API and web page on SQLite; open the URL it prints
 dotnet build CurveRisk.slnx          # every analyzer finding is a build error
 dotnet test                          # Microsoft.Testing.Platform runner; no credentials or network needed
 dotnet format CurveRisk.slnx         # fix formatting
@@ -22,12 +23,15 @@ The MCP server in `.mcp.json` runs the prebuilt Release binary: build it once wi
 |---|---|
 | `src/CurveRisk.Analytics` | Pricing library, `netstandard2.0`, pure: conventions, curves, calibration, instruments, risk |
 | `src/CurveRisk.Engine` | `AnalyticsRiskEngine`: adapts the library to the `IRiskEngine` port; percent and bp at this boundary, fractions inside |
+| `src/CurveRisk.Contracts` | API request and response records, `netstandard2.0`, no dependencies |
+| `src/CurveRisk.Api` | ASP.NET Core API under `/api/v1`: endpoints, services, EF Core persistence, the web page in `wwwroot` |
 | `src/CurveRisk.Ai.Tools` | `IRiskEngine` port and `ToolCatalog`: the one definition of every AI tool |
 | `src/CurveRisk.Mcp` | MCP stdio server exposing the catalog to external agents |
 | `src/CurveRisk.Copilot` | In-product agent: `CopilotAgent` (loop), `AskSession` (per-question state), `ToolExecutor` (approval gate), `NumericGrounding`, cost, telemetry |
 | `evals/` | Dataset, deterministic graders, live runner |
 | `tests/CurveRisk.Ai.Tests` | Unit, wire-level and architecture tests, including tests of the graders themselves |
 | `tests/CurveRisk.Analytics.Tests` | Closed-form and property tests of the pricing library |
+| `tests/CurveRisk.Api.Tests` | The real API in process on SQLite (PostgreSQL in CI), plus layering tests |
 | `tools/` | `check.mjs` (the quality gate), `coverage-gate.mjs`, thresholds in `quality.config.json` |
 
 ## Invariants
@@ -52,6 +56,15 @@ Enforced by tools; see `docs/quality-gates.md`. Run `node tools/check.mjs` befor
 - For a change of more than a few files, get a `code-reviewer` pass on the diff before reporting it done, and a `security-reviewer` pass when it touches input handling, auth, secrets, files or the network. Reviews advise; the gate decides.
 - After changing a review skill or reviewer brief, re-run `benchmarks/reviewer` and compare with its baseline.
 - `DateTime.Now`, `Thread.Sleep`, `.Result` and `.Wait()` are banned: inject `TimeProvider`, and await.
+
+## API rules
+
+- Endpoints bind, call one service method and shape the response. No logic, no `DbContext`, no pricing types in `Endpoints/`; an architecture test enforces it.
+- A breaking contract change gets a new route group under `/api/v2`; `/api/v1` keeps working. Use the `add-endpoint` skill.
+- Caller mistakes are `ApiException` subclasses, each with one status and one stable problem type. Never return a 500 for something the caller did.
+- A new endpoint comes with tests for the happy path and every documented error, driven through `ApiFactory` (the real pipeline, nothing mocked).
+- The web page sets text with `textContent` only. Trade descriptions are untrusted.
+- After a change to the page, run it (`.claude/launch.json` has the configuration) and click through it; a unit test cannot tell you the page works.
 
 ## Working rules
 

@@ -14,6 +14,12 @@ namespace CurveRisk.Api.Tests;
 /// </summary>
 public sealed class ApiFactory : WebApplicationFactory<ProblemDetailsExceptionHandler>
 {
+    /// <summary>
+    /// Set to a PostgreSQL connection string without a database name (CI does) to run every test in
+    /// this project against PostgreSQL, each factory in its own throwaway database.
+    /// </summary>
+    public const string PostgresVariable = "CURVERISK_TEST_POSTGRES";
+
     private readonly string _connectionString = $"Data Source=file:curverisk-{Guid.NewGuid():N}?mode=memory&cache=shared";
     private SqliteConnection? _keepAlive;
 
@@ -37,14 +43,20 @@ public sealed class ApiFactory : WebApplicationFactory<ProblemDetailsExceptionHa
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseEnvironment("Testing");
+        if (Environment.GetEnvironmentVariable(PostgresVariable) is { Length: > 0 } postgres)
+        {
+            builder.UseSetting("Database:Provider", ApiSetup.PostgresProvider);
+            builder.UseSetting("ConnectionStrings:CurveRisk", $"{postgres};Database=curverisk_test_{Guid.NewGuid():N}");
+            builder.UseSetting("Database:CreateOnStart", "true");
+            return;
+        }
+
         // A shared-cache in-memory database lives as long as one connection to it stays open.
         _keepAlive = new SqliteConnection(_connectionString);
         _keepAlive.Open();
-
-        builder.UseEnvironment("Testing");
         builder.UseSetting("Database:Provider", ApiSetup.SqliteProvider);
         builder.UseSetting("ConnectionStrings:CurveRisk", _connectionString);
-        builder.UseSetting("Database:CreateOnStart", "true");
     }
 
     protected override void Dispose(bool disposing)

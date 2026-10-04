@@ -47,10 +47,35 @@ public static class ApiSetup
     {
         app.UseExceptionHandler();
         app.UseStatusCodePages();
+
+        // The single-page UI in wwwroot. It talks to the API below like any other client.
+        app.UseDefaultFiles();
+        app.UseStaticFiles();
         app.MapOpenApi();
         app.MapCurveRiskV1();
         app.MapGet("/health", () => TypedResults.Ok(new HealthResponse("ok"))).ExcludeFromDescription();
         return app;
+    }
+
+    /// <summary>
+    /// Creates the schema when asked to. The SQLite provider is the local and demo database, so it is
+    /// created on first run unless told otherwise; PostgreSQL is left alone unless Database:CreateOnStart
+    /// is set, because a production schema is changed by a deployment step, not by the application.
+    /// </summary>
+    public static async Task EnsureDatabaseAsync(this WebApplication app)
+    {
+        var provider = app.Configuration["Database:Provider"] ?? SqliteProvider;
+        var isLocal = string.Equals(provider, SqliteProvider, StringComparison.OrdinalIgnoreCase);
+        if (!app.Configuration.GetValue("Database:CreateOnStart", defaultValue: isLocal))
+        {
+            return;
+        }
+
+        var scope = app.Services.CreateAsyncScope();
+        await using (scope.ConfigureAwait(false))
+        {
+            await scope.ServiceProvider.GetRequiredService<CurveRiskDbContext>().Database.EnsureCreatedAsync().ConfigureAwait(false);
+        }
     }
 
     /// <summary>PostgreSQL in production; SQLite for local runs and tests. Chosen by Database:Provider.</summary>

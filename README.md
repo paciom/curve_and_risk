@@ -14,9 +14,9 @@ A .NET 10 pricing and risk platform built agent-first, where every rule that mat
 
 | | |
 |---|---|
-| **97.8% line, 91.6% branch** | coverage, enforced as a gate |
-| **71.6% mutation score** | the honest measure of test strength: 1,045 mutants, up from a first baseline of 55.6% |
-| **269 tests** | 247 .NET and 22 on the agent guard rails; no network, no credentials |
+| **98.2% line, 91.9% branch** | coverage, enforced as a gate |
+| **70.2% mutation score** | the honest measure of test strength: 1,426 mutants, up from a first baseline of 55.6% |
+| **315 tests** | 293 .NET and 22 on the agent guard rails; no network, no credentials |
 | **0 analyzer findings** | SonarQube rules, .NET analyzers, complexity limits and banned APIs, all compile errors |
 | **12 of 12** | planted defects found by the AI reviewers in a scored benchmark, with no false alarms |
 | **1** | rule suppression in the whole codebase, justified in writing, with a budget that blocks a second |
@@ -35,6 +35,8 @@ A .NET 10 pricing and risk platform built agent-first, where every rule that mat
 
 **Measured AI.** An [eval suite](evals/) with deterministic graders for the product agent, and a [benchmark](benchmarks/reviewer/) that scores the AI reviewers against planted defects.
 
+**API design.** [Versioned REST endpoints](src/CurveRisk.Api/Endpoints/ApiEndpoints.cs) with typed [contracts](src/CurveRisk.Contracts/V1/Contracts.cs) on .NET Standard 2.0, idempotent creation, ETag concurrency, a background job resource, RFC 9457 errors, OpenAPI, and EF Core on PostgreSQL.
+
 **Conventional quality engineering underneath.** [One command](tools/check.mjs) runs nine gates locally, at push and in CI. AI review sits on top; it never decides whether a build passes.
 
 ## Proof it works
@@ -45,9 +47,11 @@ A .NET 10 pricing and risk platform built agent-first, where every rule that mat
 
 **The code failed its own standard and was refactored.** The size check flagged an 88-line agent loop. It was split into three small classes with every test green before and after.
 
-**Coverage flattered the tests, and mutation testing said so.** With 96.8% of lines covered, the first mutation run caught only 55.6% of injected faults: tests were executing code without asserting on it. The score is now measured, published and tracked, and stands at 71.6%.
+**Coverage flattered the tests, and mutation testing said so.** With 96.8% of lines covered, the first mutation run caught only 55.6% of injected faults: tests were executing code without asserting on it. The score is now measured, published and tracked, and stands at 70.2%.
 
 **An independent reviewer re-derived the numbers.** A reviewer subagent rebuilt the demo curve from scratch in a separate language and matched the pricing library to the cent. It then found two inputs the library would have silently mispriced, a swap already under way and a deposit that had already started. Both are now refused with a clear error, with tests.
+
+**Running it found what the tests could not.** All API tests were green, then the page was opened in a browser and the first click returned a 500: a fresh run had no database tables, because tests created the schema and a real start-up did not. Fixed, with a test for the opposite case.
 
 **The reviewers earned their place.** Scored against ten planted defects, both found all of theirs and raised no false alarm. One also found a real bug in a sample that was meant to be clean.
 
@@ -74,6 +78,8 @@ AI review, failure triage and a weekly security sweep run locally in Claude Code
 |---|---|
 | A skill file | [`clean-code/SKILL.md`](.claude/skills/clean-code/SKILL.md) |
 | The agent loop | [`CopilotAgent.cs`](src/CurveRisk.Copilot/CopilotAgent.cs) |
+| The REST API | [`ApiEndpoints.cs`](src/CurveRisk.Api/Endpoints/ApiEndpoints.cs), [`TradeApiTests.cs`](tests/CurveRisk.Api.Tests/TradeApiTests.cs) |
+| The pricing library | [`CurveBootstrapper.cs`](src/CurveRisk.Analytics/Curves/CurveBootstrapper.cs), [`FINANCE.md`](FINANCE.md) |
 | A guard rail and its tests | [`protect-paths.mjs`](.claude/hooks/protect-paths.mjs), [`protect-paths.test.mjs`](tests/hooks/protect-paths.test.mjs) |
 | Tests proving the graders can fail | [`EvalHarnessTests.cs`](tests/CurveRisk.Ai.Tests/EvalHarnessTests.cs) |
 | Architecture rules as tests | [`ArchitectureTests.cs`](tests/CurveRisk.Ai.Tests/ArchitectureTests.cs) |
@@ -83,8 +89,10 @@ AI review, failure triage and a weekly security sweep run locally in Claude Code
 
 ## Status
 
-Built: the pricing library, the engine that exposes it, the AI layer, the agent harness and the quality pipeline. [Planned](PLAN.md): REST API, database and UI.
+Built: the pricing library, a versioned REST API with persistence, a small web page, the AI layer (MCP server, Copilot, evals), the agent harness and the quality pipeline. Run it with `dotnet run --project src/CurveRisk.Api` and open the URL it prints.
 
-Not yet done: the product agent has not been run against the live model (no API key yet), so its evals have no baseline; SonarQube Cloud needs an account; branch rules need switching on in GitHub.
+[Planned](PLAN.md), not built: database migrations, market-data imports, Aspire orchestration, cloud deployment.
 
-**Stack:** .NET 10 and .NET Standard 2.0 · C# · xUnit v3 · Anthropic SDK · Model Context Protocol · OpenTelemetry · Stryker.NET · SonarAnalyzer · CodeQL · GitHub Actions · Claude Code
+Not yet verified: the product agent has not been run against a live model (no API key yet), so its evals have no baseline; the PostgreSQL job has not run in CI; the pricing library is checked by closed forms and an independent re-derivation, not yet against QuantLib.
+
+**Stack:** .NET 10 and .NET Standard 2.0 · C# · ASP.NET Core · EF Core · PostgreSQL · xUnit v3 · Anthropic SDK · Model Context Protocol · OpenTelemetry · Stryker.NET · SonarAnalyzer · CodeQL · GitHub Actions · Claude Code

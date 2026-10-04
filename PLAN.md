@@ -160,6 +160,19 @@ Each phase ends in something demonstrable, so the project is usable at every sta
 **Minimum credible version** if time is short: phases 0–3 plus a thin slice of 6 (MCP server + 15 evals) and the README.
 The UI is the most cuttable part; the tests, harness and evals are the least.
 
+## Status against the phases
+
+| Phase | State |
+|---|---|
+| 0. Foundations | Done |
+| 1. Analytics core | Done for a single-curve SOFR world. Not done: QuantLib reference values, projection curve |
+| 2. API + persistence | Done: v1 API, EF Core, SQLite locally and PostgreSQL by configuration. Not done: migrations, OpenAPI snapshot acceptance |
+| 3. Risk + scenarios | Done: zero and par risk, parallel and steepener shocks, background risk runs. Not done: automatic differentiation, VaR |
+| 4. Web UI | A single page served by the API (plain JavaScript and SVG). The planned React and TypeScript client is not built |
+| 5. Imports + observability | Copilot telemetry only. Not done: market-data imports, Aspire, API tracing |
+| 6. MCP + Copilot + evals | Done, and exposed through the API. Not run against a live model |
+| 7. Deploy | Not done |
+
 ## 8. Risks and how the plan handles them
 
 - **Scope creep** — one currency, five products, phases with hard exits.

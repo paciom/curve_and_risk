@@ -40,6 +40,34 @@ jobs:
           name: coverage
           path: "TestResults/*.cobertura.xml"
 
+  # The API tests again, against the database used in production. The quality gate above runs them on
+  # SQLite so that it needs no services; this job catches anything the two databases disagree about.
+  postgres-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CURVERISK_TEST_POSTGRES: Host=localhost;Port=5432;Username=postgres;Password=postgres
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          global-json-file: global.json
+
+      - name: API tests on PostgreSQL
+        run: dotnet test --project tests/CurveRisk.Api.Tests/CurveRisk.Api.Tests.csproj
+
   workflow-lint:
     runs-on: ubuntu-latest
     steps:

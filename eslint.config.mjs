@@ -7,6 +7,13 @@ export default [
   {
     files: ["**/*.mjs"],
     languageOptions: { ecmaVersion: 2024, sourceType: "module", globals: globals.node },
+  },
+  {
+    files: ["src/CurveRisk.Api/wwwroot/**/*.js"],
+    languageOptions: { ecmaVersion: 2024, sourceType: "module", globals: globals.browser },
+  },
+  {
+    files: ["**/*.mjs", "**/*.js"],
     rules: {
       "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
       "no-var": "error",
