@@ -56,7 +56,7 @@ jobs:
         run: |
           if [ -f evals/results/summary.md ]; then cat evals/results/summary.md >> "$GITHUB_STEP_SUMMARY"; fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: copilot-eval-results
