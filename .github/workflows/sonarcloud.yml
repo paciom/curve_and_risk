@@ -1,0 +1,61 @@
+name: sonarcloud
+
+# SonarQube Cloud analysis with the quality gate enforced: the job fails when the gate fails.
+# The Sonar C# rules already run in every build through SonarAnalyzer.CSharp; this adds the server
+# side: new-code coverage, duplication, security hotspots, and history.
+#
+# Setup (once): create the project in SonarQube Cloud, then add the repository secret SONAR_TOKEN and
+# the repository variables SONAR_ORGANIZATION and SONAR_PROJECT_KEY. Until then this job skips.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    if: vars.SONAR_PROJECT_KEY != '' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history, so Sonar can tell new code from old
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install scanner
+        run: dotnet tool install --global dotnet-sonarscanner
+
+      - name: Begin
+        run: >
+          dotnet sonarscanner begin
+          /k:"${{ vars.SONAR_PROJECT_KEY }}"
+          /o:"${{ vars.SONAR_ORGANIZATION }}"
+          /d:sonar.host.url="https://sonarcloud.io"
+          /d:sonar.token="$SONAR_TOKEN"
+          /d:sonar.cs.vscoveragexml.reportsPaths="**/TestResults/coverage.xml"
+          /d:sonar.exclusions="**/obj/**,**/bin/**"
+          /d:sonar.coverage.exclusions="**/Program.cs,tests/**"
+          /d:sonar.qualitygate.wait=true
+
+      - name: Build
+        run: dotnet build CurveRisk.slnx --no-incremental
+
+      - name: Test with coverage
+        run: dotnet test --no-build --coverage --coverage-output-format xml --coverage-output coverage.xml
+
+      - name: End (waits for the quality gate)
+        run: dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"

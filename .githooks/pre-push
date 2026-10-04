@@ -1,0 +1,3 @@
+#!/bin/sh
+# Full quality gate before anything leaves the machine: analyzers, tests, coverage, guard-rail tests.
+exec node tools/check.mjs

@@ -1,0 +1,9 @@
+<Project>
+  <!--
+    Installs the repository's git hooks the first time anything is built, so nobody has to remember to.
+    Skipped in CI, where the same gate runs as a workflow step, and harmless outside a git checkout.
+  -->
+  <Target Name="InstallGitHooks" BeforeTargets="Build" Condition="'$(CI)' != 'true' and Exists('$(MSBuildThisFileDirectory).git')">
+    <Exec Command="git config core.hooksPath .githooks" WorkingDirectory="$(MSBuildThisFileDirectory)" ContinueOnError="true" StandardOutputImportance="low" />
+  </Target>
+</Project>

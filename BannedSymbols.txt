@@ -1,0 +1,14 @@
+P:System.DateTime.Now;Non-deterministic. Inject TimeProvider and call GetUtcNow().
+P:System.DateTime.UtcNow;Non-deterministic. Inject TimeProvider and call GetUtcNow().
+P:System.DateTime.Today;Non-deterministic. Inject TimeProvider.
+P:System.DateTimeOffset.Now;Non-deterministic. Inject TimeProvider and call GetUtcNow().
+P:System.DateTimeOffset.UtcNow;Non-deterministic. Inject TimeProvider and call GetUtcNow().
+M:System.Threading.Thread.Sleep(System.Int32);Blocks a thread. Use await Task.Delay with a CancellationToken.
+M:System.Threading.Thread.Sleep(System.TimeSpan);Blocks a thread. Use await Task.Delay with a CancellationToken.
+M:System.Threading.Tasks.Task.Wait();Sync-over-async can deadlock. Await the task.
+P:System.Threading.Tasks.Task`1.Result;Sync-over-async can deadlock. Await the task.
+M:System.Runtime.CompilerServices.TaskAwaiter.GetResult();Sync-over-async can deadlock. Await the task.
+M:System.Runtime.CompilerServices.TaskAwaiter`1.GetResult();Sync-over-async can deadlock. Await the task.
+T:System.Random;Not injectable and not cryptographically secure. Inject a random source, or use RandomNumberGenerator for security.
+M:System.GC.Collect();Do not force garbage collection.
+M:System.Environment.Exit(System.Int32);Return an exit code from Main instead.
