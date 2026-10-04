@@ -1,5 +1,7 @@
 using CurveRisk.Ai.Tools;
+using CurveRisk.Analytics.Curves;
 using CurveRisk.Copilot;
+using CurveRisk.Engine;
 using CurveRisk.Evals;
 using NetArchTest.Rules;
 
@@ -15,6 +17,8 @@ public class ArchitectureTests
     private static readonly System.Reflection.Assembly Tools = typeof(IRiskEngine).Assembly;
     private static readonly System.Reflection.Assembly Copilot = typeof(CopilotAgent).Assembly;
     private static readonly System.Reflection.Assembly Evals = typeof(EvalRunner).Assembly;
+    private static readonly System.Reflection.Assembly Analytics = typeof(DiscountCurve).Assembly;
+    private static readonly System.Reflection.Assembly Engine = typeof(AnalyticsRiskEngine).Assembly;
 
     [Fact]
     public void Only_the_Anthropic_adapter_types_depend_on_the_Anthropic_sdk()
@@ -32,7 +36,31 @@ public class ArchitectureTests
     [Fact]
     public void The_tool_layer_depends_on_nothing_above_it()
     {
-        AssertNoDependency(Tools, "CurveRisk.Copilot", "CurveRisk.Evals", "CurveRisk.Mcp", "Anthropic", "ModelContextProtocol");
+        AssertNoDependency(
+            Tools, "CurveRisk.Copilot", "CurveRisk.Evals", "CurveRisk.Mcp", "CurveRisk.Engine", "CurveRisk.Analytics", "Anthropic", "ModelContextProtocol");
+    }
+
+    [Fact]
+    public void The_pricing_library_is_pure_no_io_no_ai_no_other_project()
+    {
+        // It must load in any .NET host, so it may not reach for files, the network, the console,
+        // async plumbing, or anything else in this solution.
+        AssertNoDependency(
+            Analytics, "CurveRisk.Ai", "CurveRisk.Copilot", "CurveRisk.Engine", "CurveRisk.Evals", "Anthropic", "Microsoft.Extensions",
+            "System.IO", "System.Net", "System.Console", "System.Threading.Tasks", "System.Environment");
+        Assert.Contains(Analytics.GetReferencedAssemblies(), reference => reference.Name == "netstandard");
+    }
+
+    [Fact]
+    public void The_engine_adapts_the_library_to_the_tool_port_and_knows_nothing_of_agents()
+    {
+        AssertNoDependency(Engine, "CurveRisk.Copilot", "CurveRisk.Evals", "CurveRisk.Mcp", "Anthropic", "ModelContextProtocol");
+    }
+
+    [Fact]
+    public void The_agent_never_reaches_past_the_port_to_the_pricing_code()
+    {
+        AssertNoDependency(Copilot, "CurveRisk.Analytics", "CurveRisk.Engine");
     }
 
     [Fact]
@@ -65,7 +93,7 @@ public class ArchitectureTests
     [Fact]
     public void Interfaces_are_named_with_an_I_prefix_and_implementations_are_sealed()
     {
-        foreach (var assembly in new[] { Tools, Copilot, Evals })
+        foreach (var assembly in new[] { Tools, Copilot, Evals, Analytics, Engine })
         {
             Assert.True(Types.InAssembly(assembly).That().AreInterfaces().Should().HaveNameStartingWith("I").GetResult().IsSuccessful);
 

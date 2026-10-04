@@ -24,7 +24,7 @@ public sealed class RiskTools(IRiskEngine engine)
         CancellationToken cancellationToken) =>
         engine.PriceTradeAsync(tradeId, cancellationToken);
 
-    [Description("Compute interest-rate risk for one trade: parallel DV01 and per-pillar bucketed deltas, each the PV change in trade currency for a +1bp bump.")]
+    [Description("Compute interest-rate risk for one trade: parallel DV01 and per-pillar bucketed deltas, each the PV change in trade currency for a +1bp bump of zero rates (zero-rate risk, not par-quote risk).")]
     public Task<RiskReport> RunRisk(
         [Description("Trade identifier, for example T-1001.")] string tradeId,
         CancellationToken cancellationToken) =>

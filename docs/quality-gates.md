@@ -16,8 +16,8 @@ node tools/check.mjs
 | links | [`check-links.mjs`](../tools/check-links.mjs) | A relative link in any Markdown file points at nothing |
 | suppressions | [`suppression-budget.mjs`](../tools/suppression-budget.mjs) | The number of silenced rules (`#pragma`, `SuppressMessage`, `NOSONAR`, `eslint-disable`, coverage exclusions) exceeds the recorded budget of 1 |
 | build | Roslyn with `TreatWarningsAsErrors` | Any finding from the analyzers below |
-| test | xUnit v3 on Microsoft.Testing.Platform | Any test fails, including the [architecture tests](../tests/CurveRisk.Ai.Tests/ArchitectureTests.cs) that turn the dependency rules in `CLAUDE.md` into assertions on the compiled assemblies |
-| coverage | [`coverage-gate.mjs`](../tools/coverage-gate.mjs) with [`quality.config.json`](../tools/quality.config.json) | Line coverage under 95%, branch coverage under 85%, or any single file under 85% |
+| test | xUnit v3 on Microsoft.Testing.Platform, one run per test project | Any test fails, including the [architecture tests](../tests/CurveRisk.Ai.Tests/ArchitectureTests.cs) that turn the dependency rules in `CLAUDE.md` into assertions on the compiled assemblies |
+| coverage | [`coverage-gate.mjs`](../tools/coverage-gate.mjs) with [`quality.config.json`](../tools/quality.config.json), merging the reports of every test project | Line coverage under 95%, branch coverage under 85%, or any single file under 85% |
 | hooks | `node --test` | A guard-rail test fails |
 
 ## What runs inside the build
@@ -69,7 +69,9 @@ dotnet tool restore
 dotnet stryker
 ```
 
-Baseline, 2026-10-04: **55.6%** (360 killed, 242 survived, 2 timed out, of 604 tested), against 96.8% line coverage. The gap is the finding: much of the code is executed by tests that do not assert on what it produced. Survivors cluster in user-facing message text, telemetry tag names and report formatting. The strongest files are the Anthropic response mapper (96%) and request mapper (80%); the weakest are telemetry (14%) and the answer and message types (14%).
+First baseline, 2026-10-04: **55.6%** (360 killed of 604), against 96.8% line coverage. The gap is the finding: much of the code was executed by tests that did not assert on what it produced. Survivors cluster in user-facing message text, telemetry tag names and report formatting.
+
+Current, with the pricing library and its closed-form tests added: **71.6%** (778 killed, 260 survived, 7 timed out, of 1,045 tested).
 
 The break threshold is 0 for now, by decision: measure first, then agree a floor and ratchet it up. The `unit-testing` skill describes how to work through survivors.
 

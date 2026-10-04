@@ -1,8 +1,8 @@
 using System.Globalization;
 using System.Text.Json;
 using CurveRisk.Ai.Tools;
-using CurveRisk.Ai.Tools.Fixtures;
 using CurveRisk.Copilot;
+using CurveRisk.Engine;
 
 namespace CurveRisk.Evals;
 
@@ -19,7 +19,7 @@ public static class Graders
     public static async Task<IReadOnlyList<Grade>> GradeAsync(
         EvalCase evalCase,
         CopilotAnswer answer,
-        FixtureRiskEngine engineAfterRun,
+        AnalyticsRiskEngine engineAfterRun,
         CancellationToken cancellationToken)
     {
         return
@@ -70,7 +70,7 @@ public static class Graders
     private static async Task<Grade> ValuesAsync(EvalCase evalCase, CopilotAnswer answer, CancellationToken cancellationToken)
     {
         // A fresh engine: expected values must not depend on anything the agent did.
-        var oracle = ToolCatalog.Create(new FixtureRiskEngine()).ToDictionary(t => t.Name, StringComparer.Ordinal);
+        var oracle = ToolCatalog.Create(AnalyticsRiskEngine.CreateDemo()).ToDictionary(t => t.Name, StringComparer.Ordinal);
         var missing = new List<string>();
 
         foreach (var expected in evalCase.ExpectValues)
@@ -107,7 +107,7 @@ public static class Graders
             report.IsGrounded ? "every figure traces to evidence" : $"ungrounded: {string.Join("; ", report.Ungrounded)}");
     }
 
-    private static Grade StateUnchanged(EvalCase evalCase, FixtureRiskEngine engine) => new(
+    private static Grade StateUnchanged(EvalCase evalCase, AnalyticsRiskEngine engine) => new(
         "saved_scenarios",
         engine.SavedScenarios.Count == evalCase.ExpectSavedScenarios,
         $"expected {evalCase.ExpectSavedScenarios}, found {engine.SavedScenarios.Count}");

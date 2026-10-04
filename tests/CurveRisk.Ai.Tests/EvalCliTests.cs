@@ -72,7 +72,7 @@ public sealed class EvalCliTests : IDisposable
     public async Task A_missing_or_malformed_dataset_exits_two_without_calling_the_model()
     {
         var model = new ScriptedModelClient();
-        var cli = new EvalCli(model, _output, _error, TimeProvider.System);
+        var cli = new EvalCli(model, new Copilot.CopilotOptions(), new EvalConsole(_output, _error), TimeProvider.System);
 
         var missing = await cli.RunAsync(new EvalSettings { Dataset = Path.Combine(_directory, "nope.jsonl") }, Ct);
         var malformed = await RunAsync(["{not json"], threshold: 1.0);
@@ -90,7 +90,8 @@ public sealed class EvalCliTests : IDisposable
 
         Assert.Equal(("d.jsonl", "o", 3, 0.75, "m", "high", "risk"),
             (settings.Dataset, settings.OutputDirectory, settings.Trials, settings.Threshold, settings.Model, settings.Effort, settings.Filter));
-        Assert.Equal("high", settings.ToCopilotOptions().Effort);
+        Assert.Equal(("m", "high"), (settings.Apply(new Copilot.CopilotOptions()).Model, settings.Apply(new Copilot.CopilotOptions()).Effort));
+        Assert.Equal("claude-opus-5-5", new EvalSettings().Apply(new Copilot.CopilotOptions()).Model);
         Assert.Throws<ArgumentException>(() => EvalSettings.Parse(["--nope", "1"]));
         Assert.Throws<ArgumentException>(() => EvalSettings.Parse(["--trials"]));
     }
@@ -121,6 +122,7 @@ public sealed class EvalCliTests : IDisposable
             Filter = filter,
         };
         var clock = new FakeClock(new DateTimeOffset(2026, 10, 4, 9, 30, 0, TimeSpan.Zero));
-        return await new EvalCli(new ScriptedModelClient(script), _output, _error, clock).RunAsync(settings, Ct);
+        var cli = new EvalCli(new ScriptedModelClient(script), new Copilot.CopilotOptions(), new EvalConsole(_output, _error), clock);
+        return await cli.RunAsync(settings, Ct);
     }
 }

@@ -5,25 +5,36 @@ namespace CurveRisk.Copilot;
 /// <summary>Builds a Messages API request from the agent's own conversation model.</summary>
 internal static class AnthropicRequestMapper
 {
-    public static Sdk.MessageCreateParams ToParameters(ModelRequest request, CopilotOptions options) => new()
+    public static Sdk.MessageCreateParams ToParameters(ModelRequest request, CopilotOptions options)
     {
-        Model = options.Model,
-        MaxTokens = options.MaxOutputTokens,
-
-        // Thinking is left at the model default (adaptive); effort is the depth control.
-        OutputConfig = new Sdk.OutputConfig { Effort = ParseEffort(options.Effort) },
-
-        // Render order is tools -> system -> messages. The breakpoint on the system block caches the
-        // stable prefix shared by every conversation; the top-level one caches the growing history
-        // between iterations of the same loop. Hits only start once the prefix passes the model's
-        // minimum cacheable length, so verify with Usage.CacheReadInputTokens rather than assume.
-        System = new List<Sdk.TextBlockParam>
+        var parameters = new Sdk.MessageCreateParams
         {
-            new() { Text = request.SystemPrompt, CacheControl = new Sdk.CacheControlEphemeral() },
-        },
+            Model = options.Model,
+            MaxTokens = options.MaxOutputTokens,
+            System = new List<Sdk.TextBlockParam> { new() { Text = request.SystemPrompt } },
+            Tools = [.. request.Tools.Select(ToTool)],
+            Messages = [.. request.Turns.Select(ToMessage)],
+        };
+
+        // Optional fields are added only when wanted, so that they are absent from the request, not
+        // sent as null: a compatible endpoint may reject a field it does not know.
+        if (options.Effort is not null)
+        {
+            // Thinking is left at the model default (adaptive); effort is the depth control.
+            parameters = parameters with { OutputConfig = new Sdk.OutputConfig { Effort = ParseEffort(options.Effort) } };
+        }
+
+        return options.PromptCaching ? WithCaching(parameters, request.SystemPrompt) : parameters;
+    }
+
+    // Render order is tools -> system -> messages. The breakpoint on the system block caches the
+    // stable prefix shared by every conversation; the top-level one caches the growing history
+    // between iterations of the same loop. Hits only start once the prefix passes the model's
+    // minimum cacheable length, so verify with Usage.CacheReadInputTokens rather than assume.
+    private static Sdk.MessageCreateParams WithCaching(Sdk.MessageCreateParams parameters, string systemPrompt) => parameters with
+    {
+        System = new List<Sdk.TextBlockParam> { new() { Text = systemPrompt, CacheControl = new Sdk.CacheControlEphemeral() } },
         CacheControl = new Sdk.CacheControlEphemeral(),
-        Tools = [.. request.Tools.Select(ToTool)],
-        Messages = [.. request.Turns.Select(ToMessage)],
     };
 
     private static Sdk.Effort ParseEffort(string effort) =>

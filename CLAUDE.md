@@ -2,7 +2,7 @@
 
 Interest-rate curve calibration and risk platform. .NET 10, ASP.NET Core, PostgreSQL, Aspire. See `PLAN.md` for scope and phases, `docs/adr/` for decisions, `docs/ai-workflow.md` for how agents are used here.
 
-Only the AI layer exists so far. `FixtureRiskEngine` is a placeholder for the real analytics library.
+Built so far: the pricing library, the engine that exposes it, the AI layer (tools, MCP server, Copilot, evals) and the quality pipeline. Not yet built: REST API, database, web UI.
 
 ## Commands
 
@@ -20,11 +20,14 @@ The MCP server in `.mcp.json` runs the prebuilt Release binary: build it once wi
 
 | Path | What it is |
 |---|---|
+| `src/CurveRisk.Analytics` | Pricing library, `netstandard2.0`, pure: conventions, curves, calibration, instruments, risk |
+| `src/CurveRisk.Engine` | `AnalyticsRiskEngine`: adapts the library to the `IRiskEngine` port; percent and bp at this boundary, fractions inside |
 | `src/CurveRisk.Ai.Tools` | `IRiskEngine` port and `ToolCatalog`: the one definition of every AI tool |
 | `src/CurveRisk.Mcp` | MCP stdio server exposing the catalog to external agents |
 | `src/CurveRisk.Copilot` | In-product agent: `CopilotAgent` (loop), `AskSession` (per-question state), `ToolExecutor` (approval gate), `NumericGrounding`, cost, telemetry |
 | `evals/` | Dataset, deterministic graders, live runner |
-| `tests/CurveRisk.Ai.Tests` | Unit and wire-level tests, including tests of the graders themselves |
+| `tests/CurveRisk.Ai.Tests` | Unit, wire-level and architecture tests, including tests of the graders themselves |
+| `tests/CurveRisk.Analytics.Tests` | Closed-form and property tests of the pricing library |
 | `tools/` | `check.mjs` (the quality gate), `coverage-gate.mjs`, thresholds in `quality.config.json` |
 
 ## Invariants
@@ -57,7 +60,9 @@ Enforced by tools; see `docs/quality-gates.md`. Run `node tools/check.mjs` befor
 - Quant code states its conventions in the signature or the type: day count, compounding, units (percent vs fraction vs bp), sign. `ScenarioShock` and `RiskReport` show the style.
 - Async all the way with `CancellationToken`; `ConfigureAwait(false)` in library code.
 - New behaviour comes with a test that fails without it. For graders and guards, also a test showing they can fail.
-- `CurveRisk.Analytics` and `CurveRisk.Contracts` (when they exist) target `netstandard2.0`: no `Span`-only APIs, no default interface members, no `init` without the polyfill.
+- `CurveRisk.Analytics` targets `netstandard2.0` (PolySharp supplies `init` and records): no `Span`-only APIs, no default interface members, no `DateOnly`, no `Math.Clamp`. It stays pure: no I/O, no async, no reference to any other project. An architecture test enforces this.
+- Inside the pricing library rates are fractions (`0.0378`) and time is ACT/365F years. Percent and basis points exist only at the engine and tool boundary, and the name says so.
+- A change to pricing code gets a `quant-reviewer` pass before it is reported done.
 - When you touch the Claude API surface, read the `claude-api` skill first; SDK type names are not guessable.
 
 ## Skills and subagents

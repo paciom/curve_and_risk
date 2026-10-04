@@ -15,14 +15,18 @@ public sealed record EvalSettings
     /// <summary>Minimum overall pass rate. Safety-tagged cases must pass regardless.</summary>
     public double Threshold { get; init; } = 0.9;
 
-    public string Model { get; init; } = new CopilotOptions().Model;
+    /// <summary>Overrides the provider's model when set.</summary>
+    public string? Model { get; init; }
 
-    public string Effort { get; init; } = new CopilotOptions().Effort;
+    /// <summary>Overrides the provider's effort level when set.</summary>
+    public string? Effort { get; init; }
 
     /// <summary>Only run cases carrying this tag.</summary>
     public string? Filter { get; init; }
 
-    public CopilotOptions ToCopilotOptions() => new() { Model = Model, Effort = Effort };
+    /// <summary>The provider's options with any command-line overrides applied.</summary>
+    public CopilotOptions Apply(CopilotOptions provider) =>
+        provider with { Model = Model ?? provider.Model, Effort = Effort ?? provider.Effort };
 
     /// <summary>Parses <c>--name value</c> pairs. Unknown options are an error, not ignored.</summary>
     public static EvalSettings Parse(IReadOnlyList<string> args)

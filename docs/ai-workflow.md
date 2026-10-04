@@ -86,6 +86,8 @@ Two findings were not fixed in code because the fix is a dataset change, and the
 
 **Mutation testing corrected the picture coverage gave.** Line coverage was 96.8%. The first mutation run killed 55.6% of 604 mutants: many tests execute code without asserting on its result, mostly message text, telemetry tags and report formatting. The first attempt reported 0%, which was a runner mismatch (Stryker's default runner does not drive this test platform) and was treated as a tool failure, not published as a score.
 
+**An independent re-derivation confirmed the pricing library, then found what it would get wrong.** The `quant-reviewer` subagent rebuilt the demo curve from scratch in Python (its own schedule, interpolation and bisection) and matched the library's PV, par rate, DV01 and every bucket to the cent. It then showed that a swap already under way would be mispriced by about 3.5 million per 100 million, and a deposit that had started before the curve date would calibrate to the wrong rate, both without any error. Neither was reachable from the product yet. Both are now refused with an exception, the reviewer's independent figures are pinned in `EngineReferenceTests`, and tolerances it called too loose were tightened from 10% to 0.1%.
+
 **What was not verified.** No Anthropic credentials were available, so the Copilot has never talked to the live model and the eval suite has never run. The adapter's request format is checked against the SDK's own serialisation, not against the API. The three GitHub workflows are syntactically valid and unexecuted. None of the 18 eval cases has a baseline. The review fixes were not themselves re-reviewed by a second independent pass.
 
 ## Running things

@@ -40,7 +40,10 @@ public sealed record TradeValuation(string TradeId, string Currency, double Pres
 
 public sealed record BucketDelta(double TenorYears, double Delta);
 
-/// <param name="ParallelDv01">PV change for a +1bp parallel shift of zero rates.</param>
+/// <param name="ParallelDv01">
+/// PV change for a +1bp parallel shift of continuously compounded zero rates. This is zero-rate risk,
+/// not par-quote risk: the two differ by a few percent and a hedge should be sized from par deltas.
+/// </param>
 /// <param name="Buckets">PV change for a +1bp bump of each pillar's zero rate in isolation.</param>
 public sealed record RiskReport(string TradeId, string Currency, double ParallelDv01, IReadOnlyList<BucketDelta> Buckets);
 

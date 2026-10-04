@@ -6,7 +6,7 @@
 
 **AI agents write the code. Engineering makes it trustworthy.**
 
-A .NET 10 codebase built agent-first, where every rule that matters is enforced by something other than a prompt: a hook, a compiler error, a test, a threshold, or a human approval.
+A .NET 10 pricing and risk platform built agent-first, where every rule that matters is enforced by something other than a prompt: a hook, a compiler error, a test, a threshold, or a human approval.
 
 *This page is about the software and AI engineering. The financial domain is in [FINANCE.md](FINANCE.md).*
 
@@ -14,9 +14,9 @@ A .NET 10 codebase built agent-first, where every rule that matters is enforced 
 
 | | |
 |---|---|
-| **96.8% line, 88.6% branch** | coverage, enforced as a gate |
-| **55.6% mutation score** | the honest measure of test strength: 604 mutants, first baseline, now tracked |
-| **141 tests** | 119 .NET and 22 on the agent guard rails; no network, no credentials |
+| **97.8% line, 91.6% branch** | coverage, enforced as a gate |
+| **71.6% mutation score** | the honest measure of test strength: 1,045 mutants, up from a first baseline of 55.6% |
+| **269 tests** | 247 .NET and 22 on the agent guard rails; no network, no credentials |
 | **0 analyzer findings** | SonarQube rules, .NET analyzers, complexity limits and banned APIs, all compile errors |
 | **12 of 12** | planted defects found by the AI reviewers in a scored benchmark, with no false alarms |
 | **1** | rule suppression in the whole codebase, justified in writing, with a budget that blocks a second |
@@ -45,7 +45,9 @@ A .NET 10 codebase built agent-first, where every rule that matters is enforced 
 
 **The code failed its own standard and was refactored.** The size check flagged an 88-line agent loop. It was split into three small classes with every test green before and after.
 
-**Coverage flattered the tests, and mutation testing said so.** 96.8% of lines run under test, yet only 55.6% of injected faults are caught. Most survivors are in message text and telemetry tags, where tests execute the code without asserting on it. That gap is why the score is measured, published and tracked instead of quoting coverage alone.
+**Coverage flattered the tests, and mutation testing said so.** With 96.8% of lines covered, the first mutation run caught only 55.6% of injected faults: tests were executing code without asserting on it. The score is now measured, published and tracked, and stands at 71.6%.
+
+**An independent reviewer re-derived the numbers.** A reviewer subagent rebuilt the demo curve from scratch in a separate language and matched the pricing library to the cent. It then found two inputs the library would have silently mispriced, a swap already under way and a deposit that had already started. Both are now refused with a clear error, with tests.
 
 **The reviewers earned their place.** Scored against ten planted defects, both found all of theirs and raised no false alarm. One also found a real bug in a sample that was meant to be clean.
 
@@ -81,8 +83,8 @@ AI review, failure triage and a weekly security sweep run locally in Claude Code
 
 ## Status
 
-The AI layer, agent harness and quality pipeline are complete. The product's engine, REST API and UI are [planned](PLAN.md); a small reference engine stands in.
+Built: the pricing library, the engine that exposes it, the AI layer, the agent harness and the quality pipeline. [Planned](PLAN.md): REST API, database and UI.
 
 Not yet done: the product agent has not been run against the live model (no API key yet), so its evals have no baseline; SonarQube Cloud needs an account; branch rules need switching on in GitHub.
 
-**Stack:** .NET 10 · C# · xUnit v3 · Anthropic SDK · Model Context Protocol · OpenTelemetry · Stryker.NET · SonarAnalyzer · CodeQL · GitHub Actions · Claude Code
+**Stack:** .NET 10 and .NET Standard 2.0 · C# · xUnit v3 · Anthropic SDK · Model Context Protocol · OpenTelemetry · Stryker.NET · SonarAnalyzer · CodeQL · GitHub Actions · Claude Code

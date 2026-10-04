@@ -1,8 +1,8 @@
 using System.Globalization;
 using System.Text;
 using CurveRisk.Ai.Tools;
-using CurveRisk.Ai.Tools.Fixtures;
 using CurveRisk.Copilot;
+using CurveRisk.Engine;
 
 namespace CurveRisk.Evals;
 
@@ -100,13 +100,13 @@ public sealed class EvalRunner(IModelClient model, CopilotOptions options)
             }
         }
 
-        return new EvalReport(options.Model, options.Effort, trials, results);
+        return new EvalReport(options.Model, options.Effort ?? "default", trials, results);
     }
 
     private async Task<TrialResult> RunOneAsync(EvalCase evalCase, int trial, CancellationToken cancellationToken)
     {
         // Fresh engine per run so one case's writes cannot leak into the next.
-        var engine = new FixtureRiskEngine();
+        var engine = AnalyticsRiskEngine.CreateDemo();
         var tools = new ToolExecutor(ToolCatalog.Create(engine), new FixedApprovalGate(evalCase.Approval));
         var agent = new CopilotAgent(model, tools, options);
 

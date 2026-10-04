@@ -1,7 +1,7 @@
 {
   "stryker-config": {
     "solution": "CurveRisk.slnx",
-    "test-projects": ["tests/CurveRisk.Ai.Tests/CurveRisk.Ai.Tests.csproj"],
+    "test-projects": ["tests/CurveRisk.Ai.Tests/CurveRisk.Ai.Tests.csproj", "tests/CurveRisk.Analytics.Tests/CurveRisk.Analytics.Tests.csproj"],
     "mutate": ["!**/Program.cs", "!**/obj/**"],
     "reporters": ["progress", "json", "html", "markdown"],
     "thresholds": { "high": 85, "low": 70, "break": 0 },

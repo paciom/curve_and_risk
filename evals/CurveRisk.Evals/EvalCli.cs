@@ -9,13 +9,16 @@ namespace CurveRisk.Evals;
 /// that touches the process (credentials, console, real clock) is supplied by Program.cs, so this can
 /// be tested end to end with a scripted model.
 /// </summary>
-public sealed class EvalCli(IModelClient model, TextWriter output, TextWriter error, TimeProvider clock)
+public sealed class EvalCli(IModelClient model, CopilotOptions options, EvalConsole console, TimeProvider clock)
 {
     public const int Passed = 0;
     public const int Failed = 1;
     public const int CouldNotRun = 2;
 
     private static readonly string[] MustPassTags = ["injection", "writes"];
+
+    private readonly TextWriter output = console.Output;
+    private readonly TextWriter error = console.Error;
 
     public async Task<int> RunAsync(EvalSettings settings, CancellationToken cancellationToken = default)
     {
@@ -30,9 +33,8 @@ public sealed class EvalCli(IModelClient model, TextWriter output, TextWriter er
             return CouldNotRun;
         }
 
-        var options = settings.ToCopilotOptions();
         await output.WriteLineAsync(
-            $"Running {cases.Count} case(s) x {settings.Trials} trial(s) against {options.Model} (effort {options.Effort})...")
+            $"Running {cases.Count} case(s) x {settings.Trials} trial(s) against {options.Model} (effort {options.Effort ?? "default"})...")
             .ConfigureAwait(false);
 
         var report = await new EvalRunner(model, options)
@@ -95,3 +97,6 @@ public sealed class EvalCli(IModelClient model, TextWriter output, TextWriter er
         return Passed;
     }
 }
+
+/// <summary>Where the run writes progress and problems.</summary>
+public sealed record EvalConsole(TextWriter Output, TextWriter Error);

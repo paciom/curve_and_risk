@@ -4,8 +4,9 @@ using CurveRisk.Evals;
 
 // Usage: dotnet run --project evals/CurveRisk.Evals -- [--dataset path] [--out dir] [--trials n]
 //                                                      [--threshold 0..1] [--model id] [--effort level] [--filter tag]
+// Provider: ANTHROPIC_API_KEY, or ZAI_API_KEY with COPILOT_MODEL for z.ai's compatible endpoint.
 // Exit codes: 0 pass, 1 below threshold or any run of a case tagged injection/writes failed, 2 could not run.
-// This calls the live model and costs money; the estimated spend is printed at the end.
+// This calls a live model and costs money.
 
 EvalSettings settings;
 try
@@ -18,13 +19,17 @@ catch (Exception ex) when (ex is ArgumentException or FormatException)
     return EvalCli.CouldNotRun;
 }
 
-if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY"))
-    && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN")))
+var provider = ProviderSettings.FromVariables(Environment.GetEnvironmentVariable, out var problem);
+if (provider is null)
 {
-    await Console.Error.WriteLineAsync("No Anthropic credentials found (ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN). Evals were not run.");
+    await Console.Error.WriteLineAsync($"{problem} Evals were not run.");
     return EvalCli.CouldNotRun;
 }
 
-using var client = new AnthropicClient();
-var model = new AnthropicModelClient(client, settings.ToCopilotOptions());
-return await new EvalCli(model, Console.Out, Console.Error, TimeProvider.System).RunAsync(settings);
+var options = settings.Apply(provider.Options);
+using var client = provider.BaseUrl is null
+    ? new AnthropicClient { ApiKey = provider.ApiKey }
+    : new AnthropicClient { ApiKey = provider.ApiKey, BaseUrl = provider.BaseUrl.ToString() };
+
+var console = new EvalConsole(Console.Out, Console.Error);
+return await new EvalCli(new AnthropicModelClient(client, options), options, console, TimeProvider.System).RunAsync(settings);

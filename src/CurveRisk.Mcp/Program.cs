@@ -1,5 +1,5 @@
 using CurveRisk.Ai.Tools;
-using CurveRisk.Ai.Tools.Fixtures;
+using CurveRisk.Engine;
 using CurveRisk.Mcp;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -12,8 +12,7 @@ var builder = Host.CreateApplicationBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole(options => options.LogToStandardErrorThreshold = LogLevel.Trace);
 
-// Placeholder engine until CurveRisk.Analytics exists; see FixtureRiskEngine.
-IRiskEngine engine = new FixtureRiskEngine();
+IRiskEngine engine = AnalyticsRiskEngine.CreateDemo();
 
 // An MCP server cannot ask a person for approval; whether to prompt is up to each client. So tools that
 // change state are not offered at all unless the operator starts the server with --allow-writes.

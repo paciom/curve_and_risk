@@ -1,7 +1,7 @@
 using System.Text.Json;
 using CurveRisk.Ai.Tools;
-using CurveRisk.Ai.Tools.Fixtures;
 using CurveRisk.Copilot;
+using CurveRisk.Engine;
 using CurveRisk.Evals;
 using static CurveRisk.Ai.Tests.ScriptedModelClient;
 
@@ -43,7 +43,7 @@ public class EvalHarnessTests
     public async Task Dataset_is_well_formed_and_every_reference_resolves_against_the_engine()
     {
         var cases = EvalDataset.Load(DatasetPath);
-        var catalog = ToolCatalog.Create(new FixtureRiskEngine()).ToDictionary(t => t.Name);
+        var catalog = ToolCatalog.Create(AnalyticsRiskEngine.CreateDemo()).ToDictionary(t => t.Name);
 
         Assert.True(cases.Count >= 15);
         foreach (var evalCase in cases)

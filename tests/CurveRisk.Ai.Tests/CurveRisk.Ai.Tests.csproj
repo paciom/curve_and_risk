@@ -13,5 +13,7 @@
     <PackageReference Include="xunit.runner.visualstudio" />
     <ProjectReference Include="..\..\src\CurveRisk.Copilot\CurveRisk.Copilot.csproj" />
     <ProjectReference Include="..\..\evals\CurveRisk.Evals\CurveRisk.Evals.csproj" />
+    <ProjectReference Include="..\..\src\CurveRisk.Analytics\CurveRisk.Analytics.csproj" />
+    <ProjectReference Include="..\..\src\CurveRisk.Engine\CurveRisk.Engine.csproj" />
   </ItemGroup>
 </Project>

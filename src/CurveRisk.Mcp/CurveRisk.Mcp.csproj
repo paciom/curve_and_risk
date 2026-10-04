@@ -7,5 +7,6 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="ModelContextProtocol" />
     <ProjectReference Include="..\CurveRisk.Ai.Tools\CurveRisk.Ai.Tools.csproj" />
+    <ProjectReference Include="..\CurveRisk.Engine\CurveRisk.Engine.csproj" />
   </ItemGroup>
 </Project>

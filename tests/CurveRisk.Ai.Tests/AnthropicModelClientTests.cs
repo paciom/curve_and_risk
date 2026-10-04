@@ -3,8 +3,8 @@ using System.Text;
 using System.Text.Json;
 using Anthropic;
 using CurveRisk.Ai.Tools;
-using CurveRisk.Ai.Tools.Fixtures;
 using CurveRisk.Copilot;
+using CurveRisk.Engine;
 
 namespace CurveRisk.Ai.Tests;
 
@@ -137,9 +137,33 @@ public class AnthropicModelClientTests
         Assert.Equal(transient, ex.IsTransient);
     }
 
+    [Fact]
+    public async Task A_compatible_endpoint_gets_no_effort_and_no_cache_breakpoints_at_its_own_base_url()
+    {
+        var handler = new StubHandler(HttpStatusCode.OK, ToolUseResponse);
+        using var sdk = new AnthropicClient
+        {
+            ApiKey = "test-key",
+            BaseUrl = "https://compatible.example/api/anthropic",
+            HttpClient = new HttpClient(handler),
+            MaxRetries = 0,
+        };
+        var options = new CopilotOptions { Model = "other-model", Effort = null, PromptCaching = false };
+
+        await new AnthropicModelClient(sdk, options).CompleteAsync(Request(Turn.UserText("Hi")), Ct);
+
+        var body = handler.LastBody.RootElement;
+        Assert.Equal("compatible.example", handler.LastUri!.Host);
+        Assert.StartsWith("/api/anthropic", handler.LastUri.AbsolutePath, StringComparison.Ordinal);
+        Assert.Equal("other-model", body.GetProperty("model").GetString());
+        Assert.False(body.TryGetProperty("output_config", out _));
+        Assert.False(body.TryGetProperty("cache_control", out _));
+        Assert.False(body.GetProperty("system")[0].TryGetProperty("cache_control", out _));
+    }
+
     private static ModelRequest Request(params Turn[] turns) => new(
         "SYSTEM",
-        [.. ToolCatalog.Create(new FixtureRiskEngine()).Select(t => new ToolSpec(t.Name, t.Function.Description, t.Function.JsonSchema))],
+        [.. ToolCatalog.Create(AnalyticsRiskEngine.CreateDemo()).Select(t => new ToolSpec(t.Name, t.Function.Description, t.Function.JsonSchema))],
         turns);
 
     private static (AnthropicModelClient Client, StubHandler Handler) Create(HttpStatusCode status, string json)

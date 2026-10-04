@@ -33,7 +33,21 @@ if (!existsSync(path.join(root, eslint))) {
   process.exit(1);
 }
 
-const coverageArgs = ["--coverage", "--coverage-output-format", "cobertura", "--coverage-output", "coverage.cobertura.xml"];
+// One coverage report per test project: a shared file name would let the last project overwrite the
+// others. The coverage gate merges every report it finds.
+const testProjects = readdirSync(path.join(root, "tests"), { withFileTypes: true })
+  .filter(entry => entry.isDirectory() && existsSync(path.join(root, "tests", entry.name, `${entry.name}.csproj`)))
+  .map(entry => entry.name);
+const testGates = testProjects.map(name => ({
+  name: `test`,
+  label: name,
+  command: "dotnet",
+  args: [
+    "test", "--no-build", "--project", `tests/${name}/${name}.csproj`,
+    "--coverage", "--coverage-output-format", "cobertura", "--coverage-output", `${name}.cobertura.xml`,
+  ],
+  full: true,
+}));
 const gates = [
   { name: "format", command: "dotnet", args: ["format", "CurveRisk.slnx", "--verify-no-changes"] },
   { name: "size", command: "node", args: [".claude/skills/clean-code/scripts/size-report.mjs", ...config.size.directories] },
@@ -41,7 +55,7 @@ const gates = [
   { name: "links", command: "node", args: ["tools/check-links.mjs"] },
   { name: "suppressions", command: "node", args: ["tools/suppression-budget.mjs"] },
   { name: "build", command: "dotnet", args: ["build", "CurveRisk.slnx", "-nologo", "-v", "q"], full: true },
-  { name: "test", command: "dotnet", args: ["test", "--no-build", ...coverageArgs], full: true },
+  ...testGates,
   { name: "coverage", command: "node", args: ["tools/coverage-gate.mjs"], full: true },
   { name: "hooks", command: "node", args: ["--test", ...hookTests], full: true },
 ];
@@ -55,6 +69,6 @@ for (const gate of gates.filter(g => !fast || !g.full)) {
     console.error(`FAIL  ${gate.name} (${seconds}s)\n\n${output.slice(-6000)}`);
     process.exit(1);
   }
-  console.log(`ok    ${gate.name.padEnd(12)} (${seconds}s)`);
+  console.log(`ok    ${gate.name.padEnd(12)} (${seconds}s)${gate.label ? `  ${gate.label}` : ""}`);
 }
 console.log(fast ? "Fast checks passed." : "All quality gates passed.");

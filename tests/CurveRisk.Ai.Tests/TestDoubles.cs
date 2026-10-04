@@ -1,12 +1,12 @@
 using CurveRisk.Ai.Tools;
-using CurveRisk.Ai.Tools.Fixtures;
 using CurveRisk.Copilot;
+using CurveRisk.Engine;
 
 namespace CurveRisk.Ai.Tests;
 
 internal sealed class ThrowingOnRiskEngine : IRiskEngine
 {
-    private readonly FixtureRiskEngine _inner = new();
+    private readonly AnalyticsRiskEngine _inner = AnalyticsRiskEngine.CreateDemo();
 
     public Task<IReadOnlyList<TradeSummary>> ListTradesAsync(CancellationToken cancellationToken) => _inner.ListTradesAsync(cancellationToken);
 

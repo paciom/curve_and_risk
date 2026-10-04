@@ -9,6 +9,9 @@ public sealed record ModelPricing(decimal Input, decimal Output, decimal CacheRe
     /// </summary>
     public static ModelPricing ClaudeOpus55 { get; } = new(Input: 4.00m, Output: 20.00m, CacheRead: 0.20m, CacheWrite: 5.00m);
 
+    /// <summary>For providers whose prices are not known here: cost is reported as zero, not guessed.</summary>
+    public static ModelPricing Unknown { get; } = new(0m, 0m, 0m, 0m);
+
     public decimal CostOf(TokenUsage usage) =>
         ((usage.InputTokens * Input)
          + (usage.OutputTokens * Output)

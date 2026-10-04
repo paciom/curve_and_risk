@@ -38,7 +38,7 @@ jobs:
         if: always()
         with:
           name: coverage
-          path: "**/TestResults/coverage.cobertura.xml"
+          path: "TestResults/*.cobertura.xml"
 
   workflow-lint:
     runs-on: ubuntu-latest

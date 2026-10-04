@@ -4,10 +4,13 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/CurveRisk.Ai.Tools/CurveRisk.Ai.Tools.csproj" />
+    <Project Path="src/CurveRisk.Analytics/CurveRisk.Analytics.csproj" />
     <Project Path="src/CurveRisk.Copilot/CurveRisk.Copilot.csproj" />
+    <Project Path="src/CurveRisk.Engine/CurveRisk.Engine.csproj" />
     <Project Path="src/CurveRisk.Mcp/CurveRisk.Mcp.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CurveRisk.Ai.Tests/CurveRisk.Ai.Tests.csproj" />
+    <Project Path="tests/CurveRisk.Analytics.Tests/CurveRisk.Analytics.Tests.csproj" />
   </Folder>
 </Solution>

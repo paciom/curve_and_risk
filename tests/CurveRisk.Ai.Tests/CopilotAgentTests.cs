@@ -1,6 +1,6 @@
 using CurveRisk.Ai.Tools;
-using CurveRisk.Ai.Tools.Fixtures;
 using CurveRisk.Copilot;
+using CurveRisk.Engine;
 using static CurveRisk.Ai.Tests.ScriptedModelClient;
 
 namespace CurveRisk.Ai.Tests;
@@ -9,7 +9,7 @@ public class CopilotAgentTests
 {
     private static readonly CancellationToken Ct = TestContext.Current.CancellationToken;
 
-    private readonly FixtureRiskEngine _engine = new();
+    private readonly AnalyticsRiskEngine _engine = AnalyticsRiskEngine.CreateDemo();
 
     private CopilotAgent Agent(IModelClient model, IApprovalGate? gate = null, CopilotOptions? options = null, BudgetGuard? budget = null) =>
         new(model, new ToolExecutor(ToolCatalog.Create(_engine), gate ?? new DenyAllApprovalGate()), options, budget);

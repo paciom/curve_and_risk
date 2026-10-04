@@ -4,8 +4,14 @@ public sealed record CopilotOptions
 {
     public string Model { get; init; } = "claude-opus-5-5";
 
-    /// <summary>low, medium, high, xhigh or max. Set explicitly rather than relying on a per-model default.</summary>
-    public string Effort { get; init; } = "medium";
+    /// <summary>
+    /// low, medium, high, xhigh or max. Set explicitly rather than relying on a per-model default.
+    /// Null omits the field, for compatible endpoints that do not accept it.
+    /// </summary>
+    public string? Effort { get; init; } = "medium";
+
+    /// <summary>Send cache breakpoints. Off for compatible endpoints that do not implement prompt caching.</summary>
+    public bool PromptCaching { get; init; } = true;
 
     public int MaxOutputTokens { get; init; } = 16_000;
 

@@ -56,7 +56,7 @@ Prompt caching: the system prompt and tool list are byte-stable (a test asserts 
 
 ## Known gaps
 
-- `FixtureRiskEngine` is a placeholder with one hard-coded curve. The eval dataset has 18 cases against it; the planned 50 need the real engine.
+- The eval dataset has 18 cases. They were written against a placeholder engine and still hold against the real one (`AnalyticsRiskEngine`), because expected figures are recomputed at grading time; extending the set towards 50 is open.
 - No rate limiting per user; that belongs to the API host, which does not exist yet.
 - The Copilot has no host process. It is a library with tests and an eval runner until the API project is built.
 - The GitHub workflows have not been executed.

@@ -2,7 +2,7 @@
 
 The software engineering story is in the [README](README.md). This page is about the finance: what the platform models, the conventions it has to get right, and how its numbers are made trustworthy.
 
-> **Status.** The production pricing library is designed ([PLAN.md](PLAN.md)) and not yet built. What exists today is a deliberately simple reference engine ([`FixtureRiskEngine`](src/CurveRisk.Ai.Tools/Fixtures/FixtureRiskEngine.cs)), the tests that pin its financial properties, and the review and validation procedures the real engine will be built under. Each section says which is which.
+> **Status.** The pricing library ([`CurveRisk.Analytics`](src/CurveRisk.Analytics/)) is implemented for a single-curve USD SOFR world and is the engine behind every number the product shows. It is validated by closed-form and property tests; validation against QuantLib, a separate projection curve and the items marked *planned* below are not done yet.
 
 ## What the platform does
 
@@ -19,9 +19,9 @@ Builds interest-rate curves from market quotes, prices rate products off those c
 
 **Why a curve.** A cash flow at time *t* is worth its amount times the discount factor *DF(t)*. Quotes exist only at a handful of maturities, so a curve is the set of discount factors that reprices every quoted instrument, plus a rule for the gaps between them.
 
-**Multi-curve.** Since the 2008 crisis, discounting and projection are separate questions. Collateralised trades discount at the overnight rate (SOFR OIS), while a floating leg's forward rates come from its own index curve. The plan calibrates the discount curve first, then solves the projection curve given it (dual bootstrapping).
+**Multi-curve.** Since the 2008 crisis, discounting and projection are separate questions. Collateralised trades discount at the overnight rate (SOFR OIS), while a floating leg's forward rates come from its own index curve. For SOFR swaps the two coincide, which is the case implemented: one curve both discounts and projects. A separate projection curve solved against a fixed discount curve (dual bootstrapping) is *planned*.
 
-**Bootstrapping versus a global solve.** A sequential bootstrap solves one pillar at a time, each with a one-dimensional root find (Brent or Newton). It is fast and exact when each instrument depends only on earlier pillars. Interpolation schemes that look ahead break that assumption, so the plan also includes a global least-squares solve (Levenberg–Marquardt) and compares the two.
+**Bootstrapping.** A sequential bootstrap solves one pillar at a time, each with a one-dimensional root find; here that is [Brent's method](src/CurveRisk.Analytics/Numerics/Brent.cs), which needs a bracket and no derivative. It is exact in one pass when each instrument depends only on pillars up to its own. An interpolation scheme that looks ahead breaks that assumption, so the [bootstrapper](src/CurveRisk.Analytics/Curves/CurveBootstrapper.cs) repeats the pass until every quote reprices to 1e-12: one sweep for the local schemes, several for the cubic. A global least-squares solve (Levenberg–Marquardt) is *planned* as a cross-check.
 
 **Interpolation is a modelling choice, not a detail.** Every scheme reprices the inputs; they differ in the forward rates they imply between pillars.
 
@@ -29,11 +29,11 @@ Builds interest-rate curves from market quotes, prices rate products off those c
 |---|---|
 | Log-linear on discount factors | Piecewise-constant forwards. Robust; forwards jump at pillars |
 | Linear on zero rates | Simple; implies saw-tooth forwards that can go negative |
-| Monotone-convex, monotone cubic | Smooth, positive forwards; risk spreads across neighbouring pillars |
+| Monotone cubic on log discount factors | Smooth forwards with no overshoot; risk spreads across neighbouring pillars |
 
 The choice changes where bucketed risk appears, which is why the scheme is pluggable and its effect on forwards is shown, not hidden.
 
-*Today:* the reference engine uses one fixed USD-SOFR zero curve with eight pillars (1Y to 30Y), continuous compounding, linear interpolation on zero rates and flat extrapolation.
+All three are [implemented](src/CurveRisk.Analytics/Curves/Interpolation.cs) and selectable per curve. Time on the curve is ACT/365F from the as-of date, zero rates are continuously compounded, and the zero rate is held flat beyond the last pillar.
 
 ## Pricing
 
@@ -44,9 +44,11 @@ A fixed-for-floating swap is two legs:
 
 The **par rate** is the fixed rate that makes the two legs equal: (1 − *DF(T)*) / annuity. A payer swap is in the money when the par rate is above its fixed rate.
 
-Worked from the reference engine: trade `T-1001` pays 3.50% fixed for five years on 100 million. The par rate is 3.8745%, so the payer is worth about +1.67 million: roughly 37 basis points of advantage, times the annuity, times the notional.
+Worked example from the demo market: trade `T-1001` pays 3.50% fixed for five years on 100 million. The curve is calibrated to a 5Y par quote of 3.78%, and the swap's par rate comes back as exactly 3.78%, which is calibration doing its job. The payer is worth +1,270,062: 28 basis points of advantage, times an annuity of about 4.5, times the notional.
 
-*Planned:* deposits, FRAs, OIS, swaps with real schedules (ACT/360 floating, 30/360 or ACT/ACT fixed, business-day adjustment, stubs) and fixed-rate bonds with accrued interest.
+Swaps follow [USD SOFR OIS conventions](src/CurveRisk.Analytics/Instruments/InterestRateSwap.cs): spot start two business days after trade date, annual fixed payments, ACT/360, modified following, US holiday calendar, schedules generated backward from maturity so any stub is at the front. [Deposits, forward rate agreements and fixed-rate bonds](src/CurveRisk.Analytics/Instruments/CashInstruments.cs) (with accrued interest and clean price) are implemented alongside.
+
+*Planned:* payment lag, compounding-in-arrears detail on the floating leg, and yield-to-maturity for bonds.
 
 ## Risk
 
@@ -56,13 +58,14 @@ Worked from the reference engine: trade `T-1001` pays 3.50% fixed for five years
 
 **A consistency property worth testing.** With linear interpolation the pillar bumps partition a parallel shift, so the bucket deltas must add up to the parallel DV01. The suite asserts this ([`ToolLayerTests`](tests/CurveRisk.Ai.Tests/ToolLayerTests.cs)).
 
-**Three ways to compute sensitivities**, all in the plan, to be cross-checked against each other:
+**Zero risk and par risk.** Both are [implemented](src/CurveRisk.Analytics/Risk/RiskCalculator.cs) by bump and revalue.
 
-| Method | Trade-off |
-|---|---|
-| Bump and revalue | Simple and model-free; one repricing per bucket; bump size trades truncation error against rounding noise |
-| Jacobian transform | Converts zero-rate sensitivities to par-instrument sensitivities, the form a trader hedges with |
-| Automatic differentiation (dual numbers) | Exact derivatives in one pass; no bump-size choice |
+| Measure | How | What it tells you |
+|---|---|---|
+| Zero-rate delta | Bump one pillar's zero rate, reprice | Where on the curve the exposure sits |
+| Par delta | Bump one market quote, recalibrate the whole curve, reprice | Exposure in terms of the instruments you would hedge with |
+
+The difference shows on `T-1001`. Its zero-rate risk is 43,710 at the five-year pillar with small amounts at one, two and three years, where the coupons fall. In par terms a swap struck at the market rate shows its entire risk in its own maturity bucket and nothing elsewhere, which the tests assert. Automatic differentiation with dual numbers is *planned* as a third method to cross-check both.
 
 ## Scenarios, and why DV01 is not enough
 
@@ -102,19 +105,22 @@ A compiler does not catch any of these. They are the checklist in the [`quant-re
 - A zero shock gives zero P&L.
 - Discount factors decrease with maturity.
 
-Asserted today against the reference engine: bucket deltas sum to the parallel delta, a zero shock gives zero P&L, a scenario agrees with DV01 to within convexity, and a swap's PV has the sign of par rate minus fixed rate for a payer. The others arrive with the real engine.
+All six are asserted in the [test suite](tests/CurveRisk.Analytics.Tests/), for each interpolation scheme where the property applies.
+
+**Closed-form checks.** On a flat curve every discount factor is exp(−rt), so a swap, a forward rate agreement and a bond can each be valued by hand and compared to fourteen decimal places. A single deposit must calibrate to 1 / (1 + rτ).
 
 **The model never originates a number.** In the Risk Copilot every figure in an answer must trace to an engine result. In a risk system a plausible number that the engine did not produce is worse than no number, because someone will act on it.
 
 ## Implemented and planned
 
-| Area | Today | Planned |
+| Area | Implemented | Planned |
 |---|---|---|
-| Curve | One fixed zero curve, linear interpolation | Calibration from market quotes, multi-curve, three interpolation schemes |
-| Products | Vanilla swap, annual fixed coupons, unit year fractions | Deposit, FRA, OIS, IRS with full conventions, bond |
-| Risk | Parallel DV01 and bucketed delta by bumping | Jacobian to par risk, automatic differentiation |
-| Scenarios | Parallel and 2s10s steepener | Flattener, butterfly, custom shocks, historical VaR and ES |
-| Validation | Property tests on the reference engine | QuantLib golden values for every instrument |
-| Numerical methods | None needed | Brent, Newton, Levenberg–Marquardt, dual-number AD |
+| Conventions | ACT/360, ACT/365F, 30/360; US holiday calendar; business-day adjustment; backward schedule generation with stubs | Good Friday and ad hoc closures; end-of-February 30/360 rule |
+| Curve | Iterative bootstrap from deposits and OIS par quotes; three interpolation schemes | Separate projection curve; global least-squares solve |
+| Products | OIS and fixed-float swaps, deposits, forward rate agreements, fixed-rate bonds | Payment lag; compounding in arrears; bond yield |
+| Risk | Parallel DV01, zero-rate bucketed delta, par delta by recalibration | Automatic differentiation |
+| Scenarios | Parallel and 2s10s steepener | Flattener, butterfly, custom shocks, historical VaR and expected shortfall |
+| Validation | Closed forms and property tests | QuantLib reference values for every instrument |
+| Market data | An illustrative demo snapshot | Imported history from public sources |
 
-The reference engine is not market-accurate and is not meant to be. It exists so the layers above it could be built and tested first, and it is replaced when the real library lands.
+The demo market is plausible, not sourced from a vendor. No number here should be read as a real market level.

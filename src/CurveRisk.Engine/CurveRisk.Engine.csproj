@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CurveRisk.Analytics\CurveRisk.Analytics.csproj" />
+    <ProjectReference Include="..\CurveRisk.Ai.Tools\CurveRisk.Ai.Tools.csproj" />
+  </ItemGroup>
+</Project>
