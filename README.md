@@ -229,7 +229,7 @@ Stated here because an unverified claim is worth less than a stated gap.
 
 - **Never run against the live model.** No API credentials were available. The eval suite has no baseline, the 0.9 threshold is a placeholder, and prompt-cache hits are unconfirmed.
 - **The general skills are new.** `clean-code` and `refactor-safely` were applied to this codebase; `review-security`, `debug-systematically` and the `code-reviewer` and `security-reviewer` subagents have not yet been exercised on it. No security review of this repository has been run.
-- **GitHub workflows are unexecuted.** They parse; they have not run. SonarQube Cloud needs a project and token before its job does anything, and required status checks must be switched on in branch protection.
+- **Optional workflows are switched off until configured.** The quality gate and secret scan run on every push and pull request. CodeQL runs only while the repository is public. SonarQube Cloud needs a project, `SONAR_TOKEN` and two repository variables. Live evals and agent PR review need `ANTHROPIC_API_KEY` plus the variables `ENABLE_LIVE_EVALS` and `ENABLE_CLAUDE_REVIEW`. Required status checks must be switched on in the repository's branch rules.
 - **The agent's stop hook runs build and tests, not yet the full gate.** Coverage and size limits are enforced at push and in CI. Pointing the stop hook at `tools/check.mjs` is a one-line change the agent is blocked from making itself, by design.
 - **The engine is a placeholder**: one hard-coded curve and three swaps.
 - **No host for the Copilot yet**: no streaming to a UI, no per-user rate limit.

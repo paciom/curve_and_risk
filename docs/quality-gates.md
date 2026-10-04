@@ -42,7 +42,7 @@ Exceptions to rules are in `.editorconfig`, each with its reason on the same lin
 | `git commit` | [`.githooks/pre-commit`](../.githooks/pre-commit) | Format and size |
 | `git push` | [`.githooks/pre-push`](../.githooks/pre-push) | Full gate |
 | Pull request and `main` | [`ci.yml`](../.github/workflows/ci.yml) | Full gate, plus secret scanning with gitleaks |
-| Pull request and `main` | [`codeql.yml`](../.github/workflows/codeql.yml) | Static security analysis for C# and JavaScript |
+| Pull request and `main` | [`codeql.yml`](../.github/workflows/codeql.yml) | Static security analysis for C# and JavaScript (public repositories only, unless GitHub Advanced Security is enabled) |
 | Pull request and `main` | [`sonarcloud.yml`](../.github/workflows/sonarcloud.yml) | SonarQube Cloud quality gate (needs a token; see the file) |
 | Weekly | [`dependabot.yml`](../.github/dependabot.yml) | Dependency and action updates |
 

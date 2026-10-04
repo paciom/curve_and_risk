@@ -2,6 +2,9 @@ name: codeql
 
 # Static application security testing. Findings appear under the repository's Security tab and
 # block the pull request when the repository's code-scanning rule is set to required.
+#
+# Code scanning is free for public repositories; a private repository needs GitHub Advanced Security,
+# and without it the upload step fails. So this runs only while the repository is public.
 
 on:
   push:
@@ -17,6 +20,7 @@ permissions:
 jobs:
   analyze:
     runs-on: ubuntu-latest
+    if: github.event.repository.private == false
     strategy:
       fail-fast: false
       matrix:
