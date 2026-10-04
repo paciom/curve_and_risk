@@ -12,5 +12,20 @@
   "suppressions": {
     "max": 1,
     "directories": ["src", "evals", "tests", "tools", ".claude"]
+  },
+  "mutationLoop": {
+    "targetScorePercent": 94,
+    "maxRounds": 10,
+    "maxAttemptsPerFile": 2,
+    "stallRounds": 3,
+    "maxSpendUsd": 20,
+    "maxSpendPerAttemptUsd": 3,
+    "ledger": "docs/reports/mutation-loop.jsonl",
+    "allowedPaths": ["^tests/CurveRisk\\.[^/]+/.+\\.cs$"],
+    "protectedPaths": ["/golden/", "\\.verified\\."],
+    "forbiddenTestContent": ["Stryker", "ActiveMutation", "GetEnvironmentVariable"],
+    "unobservable": [
+      { "precededBy": "ConfigureAwait(", "reason": "ConfigureAwait(false) flipped to true; no test can observe the difference" }
+    ]
   }
 }

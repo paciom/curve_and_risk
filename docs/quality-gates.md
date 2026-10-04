@@ -72,7 +72,7 @@ dotnet stryker
 
 First baseline, 2026-10-04: **55.6%** (360 killed of 604), against 96.8% line coverage. The gap is the finding: much of the code was executed by tests that did not assert on what it produced. Survivors cluster in user-facing message text, telemetry tag names and report formatting.
 
-With the pricing library and its closed-form tests added: 71.6% of 1,045. Current, with the API added: **70.2%** (1,033 killed, 386 survived, 7 timed out, of 1,426 tested). A full run takes about eleven minutes.
+With the pricing library and its closed-form tests added: 71.6% of 1,045. With the API added: 70.2% (1,033 killed, 386 survived, 7 timed out, of 1,426 tested). Current, after working through the survivors: **92.0%** (1,357 killed, 8 timed out, 118 undetected, of 1,483 tested). Of the 118, 87 are `ConfigureAwait(false)` flipped to `true`, which no test can observe. A full run takes about sixteen minutes, and must not overlap another Stryker run or a build on the same machine.
 
 The break threshold is 0 for now, by decision: measure first, then agree a floor and ratchet it up. The `unit-testing` skill describes how to work through survivors.
 

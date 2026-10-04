@@ -20,28 +20,40 @@ def is_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
+def number_differences(actual: float, reference: float, rel: float, abs_tol: float, path: str) -> Iterator[str]:
+    if math.isnan(actual) or math.isnan(reference):
+        if not (math.isnan(actual) and math.isnan(reference)):
+            yield f"{path}: actual={actual!r} reference={reference!r} (NaN)"
+        return
+    if not math.isclose(actual, reference, rel_tol=rel, abs_tol=abs_tol):
+        error = actual - reference
+        relative = abs(error) / abs(reference) if reference else math.inf
+        yield f"{path}: actual={actual!r} reference={reference!r} abs_err={error:.3e} rel_err={relative:.3e}"
+
+
+def dict_differences(actual: dict, reference: dict, rel: float, abs_tol: float, path: str) -> Iterator[str]:
+    for key in sorted(reference.keys() - actual.keys()):
+        yield f"{path}.{key}: missing from actual"
+    for key in sorted(actual.keys() - reference.keys()):
+        yield f"{path}.{key}: not in reference"
+    for key in sorted(actual.keys() & reference.keys()):
+        yield from differences(actual[key], reference[key], rel, abs_tol, f"{path}.{key}")
+
+
+def list_differences(actual: list, reference: list, rel: float, abs_tol: float, path: str) -> Iterator[str]:
+    if len(actual) != len(reference):
+        yield f"{path}: length actual={len(actual)} reference={len(reference)}"
+    for index, (a, r) in enumerate(zip(actual, reference)):
+        yield from differences(a, r, rel, abs_tol, f"{path}[{index}]")
+
+
 def differences(actual: Any, reference: Any, rel: float, abs_tol: float, path: str = "$") -> Iterator[str]:
     if is_number(actual) and is_number(reference):
-        if math.isnan(actual) or math.isnan(reference):
-            if not (math.isnan(actual) and math.isnan(reference)):
-                yield f"{path}: actual={actual!r} reference={reference!r} (NaN)"
-            return
-        if not math.isclose(actual, reference, rel_tol=rel, abs_tol=abs_tol):
-            error = actual - reference
-            relative = abs(error) / abs(reference) if reference else math.inf
-            yield f"{path}: actual={actual!r} reference={reference!r} abs_err={error:.3e} rel_err={relative:.3e}"
+        yield from number_differences(actual, reference, rel, abs_tol, path)
     elif isinstance(actual, dict) and isinstance(reference, dict):
-        for key in sorted(reference.keys() - actual.keys()):
-            yield f"{path}.{key}: missing from actual"
-        for key in sorted(actual.keys() - reference.keys()):
-            yield f"{path}.{key}: not in reference"
-        for key in sorted(actual.keys() & reference.keys()):
-            yield from differences(actual[key], reference[key], rel, abs_tol, f"{path}.{key}")
+        yield from dict_differences(actual, reference, rel, abs_tol, path)
     elif isinstance(actual, list) and isinstance(reference, list):
-        if len(actual) != len(reference):
-            yield f"{path}: length actual={len(actual)} reference={len(reference)}"
-        for index, (a, r) in enumerate(zip(actual, reference)):
-            yield from differences(a, r, rel, abs_tol, f"{path}[{index}]")
+        yield from list_differences(actual, reference, rel, abs_tol, path)
     elif type(actual) is not type(reference) or actual != reference:
         yield f"{path}: actual={actual!r} reference={reference!r}"
 

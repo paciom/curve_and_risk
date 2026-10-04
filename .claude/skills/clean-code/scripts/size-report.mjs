@@ -23,7 +23,10 @@ if (roots.length === 0) roots.push(".");
 
 const EXTENSIONS = new Set([".cs", ".ts", ".tsx", ".js", ".mjs"]);
 const SKIP = new Set(["bin", "obj", "node_modules", ".git", "dist", "Generated", "TestResults"]);
-const KEYWORDS = /^(if|for|foreach|while|switch|catch|using|lock|else|do|try|finally|return|new|get|set|init|namespace|class|record|struct|interface|enum|function)$/;
+const KEYWORDS = new Set([
+  "if", "for", "foreach", "while", "switch", "catch", "using", "lock", "else", "do", "try", "finally", "return",
+  "new", "get", "set", "init", "namespace", "class", "record", "struct", "interface", "enum", "function",
+]);
 
 function* walk(dir) {
   for (const entry of readdirSync(dir)) {
@@ -35,10 +38,18 @@ function* walk(dir) {
 }
 
 // Blank out strings and comments so braces inside them are not counted, keeping line numbers intact.
+const NON_CODE = new RegExp([
+  /"""[\s\S]*?"""/,          // C# raw string
+  /\/\*[\s\S]*?\*\//,        // block comment
+  /\/\/[^\n]*/,              // line comment
+  /@"(?:[^"]|"")*"/,         // C# verbatim string
+  /"(?:\\.|[^"\\\n])*"/,     // double-quoted string
+  /'(?:\\.|[^'\\\n])*'/,     // single-quoted string or char
+  /`(?:\\.|[^`\\])*`/,       // template literal
+].map(pattern => pattern.source).join("|"), "g");
+
 function strip(source) {
-  return source.replace(
-    /"""[\s\S]*?"""|\/\*[\s\S]*?\*\/|\/\/[^\n]*|@"(?:[^"]|"")*"|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`/g,
-    match => match.replace(/[^\n]/g, " "));
+  return source.replace(NON_CODE, match => match.replace(/[^\n]/g, " "));
 }
 
 // Commas inside generic arguments, tuples or defaults do not separate parameters: Func<A, B> is one.
@@ -54,18 +65,35 @@ function countParameters(list) {
   return count;
 }
 
+// The index of the "{" that opens the body of a signature ending at `from`, or -1 when what follows
+// is not a body. Between the two there may be a return type or base call (": ...", with no "=") and
+// generic constraints ("where ...").
+function bodyStart(text, from) {
+  let open = from;
+  while (open < text.length && !"{};".includes(text[open])) open++;
+  if (text[open] !== "{") return -1;
+
+  const between = text.slice(from, open).trim();
+  const beforeConstraints = between.split(/where\s/)[0];
+  const allowed = between.startsWith(":") ? !beforeConstraints.includes("=") : beforeConstraints === "";
+  return allowed ? open : -1;
+}
+
 function functionsIn(source) {
   const text = strip(source);
   const found = [];
-  // name(params) ... {   where what follows the parenthesis is optional modifiers/constraints/return type
-  const signature = /([A-Za-z_][A-Za-z0-9_]*)\s*(?:<[^<>()]*>)?\s*\(([^(){};]*)\)\s*(?::\s*[^{};=]+?)?(?:where\s[^{};]+?)?\s*\{/g;
+  // name(params), optionally generic: name<T>(params). Anchored at a word boundary so that a long
+  // identifier is tried once, not once per character.
+  const signature = /\b([A-Za-z_]\w*)\s*(?:<[^<>()]*>\s*)?\(([^(){};]*)\)/g;
   let match;
   while ((match = signature.exec(text)) !== null) {
     const name = match[1];
-    if (KEYWORDS.test(name)) continue;
+    const open = bodyStart(text, match.index + match[0].length);
+    if (open < 0) continue;
+    signature.lastIndex = open + 1; // a base call or constraint before the brace is not a function of its own
+    if (KEYWORDS.has(name)) continue;
     // A type declared with a primary constructor - "class Foo(IBar bar) {" - looks like a function. It is not.
     if (/\b(class|record|struct|interface)\s+$/.test(text.slice(Math.max(0, match.index - 40), match.index))) continue;
-    const open = match.index + match[0].length - 1;
     let depth = 0;
     let close = open;
     for (; close < text.length; close++) {

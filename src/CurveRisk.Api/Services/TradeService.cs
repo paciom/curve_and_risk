@@ -30,18 +30,20 @@ public sealed class TradeService(CurveRiskDbContext db, TimeProvider clock)
     {
         Validate(request.TradeId, request.Direction, new UpdateTradeRequest(request.NotionalAmount, request.FixedRatePercent, request.Tenor, request.Description));
 
+        // The id is stored trimmed, so a new one is compared trimmed: booking " T-1 " after "T-1" is a duplicate.
+        var tradeId = request.TradeId.Trim();
         var existing = await db.Trades.AsNoTracking()
-            .FirstOrDefaultAsync(trade => trade.TradeId == request.TradeId, cancellationToken).ConfigureAwait(false);
+            .FirstOrDefaultAsync(trade => trade.TradeId == tradeId, cancellationToken).ConfigureAwait(false);
         if (existing is not null)
         {
             return idempotencyKey is not null && existing.IdempotencyKey == idempotencyKey
                 ? new CreateTradeResult(ToStored(existing), Created: false)
-                : throw new ConflictException($"Trade '{request.TradeId}' already exists.");
+                : throw new ConflictException($"Trade '{tradeId}' already exists.");
         }
 
         var entity = new TradeEntity
         {
-            TradeId = request.TradeId.Trim(),
+            TradeId = tradeId,
             NotionalAmount = request.NotionalAmount,
             FixedRatePercent = request.FixedRatePercent,
             PayFixed = request.Direction == PayFixed,
@@ -49,7 +51,7 @@ public sealed class TradeService(CurveRiskDbContext db, TimeProvider clock)
             Description = request.Description ?? string.Empty,
             Version = 1,
             IdempotencyKey = idempotencyKey,
-            CreatedUtc = clock.GetUtcNow(),
+            CreatedUtc = clock.UtcNowToMillisecond(),
         };
         db.Trades.Add(entity);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

@@ -14,6 +14,7 @@ public static class CopilotTelemetry
 {
     public const string Name = "CurveRisk.Copilot";
     private const string Provider = "anthropic";
+    private const string OperationNameTag = "gen_ai.operation.name";
 
     private static readonly ActivitySource Source = new(Name);
     private static readonly Meter Meter = new(Name);
@@ -32,19 +33,19 @@ public static class CopilotTelemetry
 
     public static Activity? StartAgent() =>
         Source.StartActivity("invoke_agent risk-copilot")
-            ?.SetTag("gen_ai.operation.name", "invoke_agent")
+            ?.SetTag(OperationNameTag, "invoke_agent")
             .SetTag("gen_ai.agent.name", "risk-copilot")
             .SetTag("gen_ai.provider.name", Provider);
 
     public static Activity? StartChat(string model) =>
         Source.StartActivity($"chat {model}", ActivityKind.Client)
-            ?.SetTag("gen_ai.operation.name", "chat")
+            ?.SetTag(OperationNameTag, "chat")
             .SetTag("gen_ai.provider.name", Provider)
             .SetTag("gen_ai.request.model", model);
 
     public static Activity? StartTool(ToolCallPart call) =>
         Source.StartActivity($"execute_tool {call.Name}")
-            ?.SetTag("gen_ai.operation.name", "execute_tool")
+            ?.SetTag(OperationNameTag, "execute_tool")
             .SetTag("gen_ai.tool.name", call.Name)
             .SetTag("gen_ai.tool.call.id", call.Id);
 
@@ -59,7 +60,7 @@ public static class CopilotTelemetry
 
         var tags = new TagList
         {
-            { "gen_ai.operation.name", "chat" },
+            { OperationNameTag, "chat" },
             { "gen_ai.provider.name", Provider },
             { "gen_ai.request.model", requestModel },
             { "gen_ai.response.model", response.Model },
