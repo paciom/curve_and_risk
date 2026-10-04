@@ -9,3 +9,4 @@ evals/results/
 node_modules/
 obj/
 StrykerOutput/
+curverisk.db*
