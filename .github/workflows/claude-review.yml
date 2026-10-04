@@ -21,7 +21,7 @@ jobs:
     # Opt-in: set the repository variable ENABLE_CLAUDE_REVIEW=true once the ANTHROPIC_API_KEY secret exists.
     if: vars.ENABLE_CLAUDE_REVIEW == 'true' && github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
