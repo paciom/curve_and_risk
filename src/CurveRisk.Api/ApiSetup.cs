@@ -1,6 +1,7 @@
 using CurveRisk.Api.Endpoints;
 using CurveRisk.Api.Persistence;
 using CurveRisk.Api.Services;
+using CurveRisk.Copilot;
 using Microsoft.EntityFrameworkCore;
 
 namespace CurveRisk.Api;
@@ -22,11 +23,24 @@ public static class ApiSetup
         services.AddScoped<PricingService>();
         services.AddScoped<RiskRunService>();
         services.AddHostedService<RiskRunWorker>();
+        AddCopilot(services, configuration);
 
         services.AddProblemDetails();
         services.AddExceptionHandler<ProblemDetailsExceptionHandler>();
         services.AddOpenApi("v1");
         return services;
+    }
+
+    /// <summary>The model client is registered only when a provider is configured, and the container owns and disposes it.</summary>
+    private static void AddCopilot(IServiceCollection services, IConfiguration configuration)
+    {
+        var copilot = CopilotConfiguration.From(configuration);
+        services.AddSingleton(copilot);
+        services.AddScoped<CopilotService>();
+        if (copilot.Provider is { } provider)
+        {
+            services.AddSingleton<IModelClient>(_ => new AnthropicProviderClient(provider));
+        }
     }
 
     public static WebApplication MapCurveRiskApi(this WebApplication app)

@@ -1,4 +1,3 @@
-using Anthropic;
 using CurveRisk.Copilot;
 using CurveRisk.Evals;
 
@@ -27,9 +26,7 @@ if (provider is null)
 }
 
 var options = settings.Apply(provider.Options);
-using var client = provider.BaseUrl is null
-    ? new AnthropicClient { ApiKey = provider.ApiKey }
-    : new AnthropicClient { ApiKey = provider.ApiKey, BaseUrl = provider.BaseUrl.ToString() };
+using var model = new AnthropicProviderClient(provider, options);
 
 var console = new EvalConsole(Console.Out, Console.Error);
-return await new EvalCli(new AnthropicModelClient(client, options), options, console, TimeProvider.System).RunAsync(settings);
+return await new EvalCli(model, options, console, TimeProvider.System).RunAsync(settings);

@@ -43,6 +43,14 @@ public sealed class PreconditionFailedException() : ApiException("The resource h
     public override string ProblemType => "precondition-failed";
 }
 
+/// <summary>A feature that needs configuration the deployment does not have.</summary>
+public sealed class ServiceUnavailableException(string message) : ApiException(message)
+{
+    public override int StatusCode => StatusCodes.Status503ServiceUnavailable;
+
+    public override string ProblemType => "unavailable";
+}
+
 /// <summary>The request was well formed but its fields are not acceptable. Carries one or more messages per field.</summary>
 public sealed class RequestValidationException(IReadOnlyDictionary<string, string[]> errors) : ApiException("One or more fields are invalid.")
 {

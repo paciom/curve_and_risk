@@ -92,6 +92,12 @@ public static class ApiEndpoints
             return TypedResults.Accepted($"/api/v1/risk-runs/{run.Id}", run);
         }).ProducesValidationProblem().ProducesProblem(StatusCodes.Status404NotFound);
 
+        group.MapPost("/copilot/answers", async (CopilotQuestionRequest request, CopilotService copilot, CancellationToken ct) =>
+            TypedResults.Ok(await copilot.AskAsync(request, ct).ConfigureAwait(false)))
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
+
         group.MapGet("/risk-runs/{id:guid}", async (Guid id, RiskRunService service, CancellationToken ct) =>
             TypedResults.Ok(await service.GetAsync(id, ct).ConfigureAwait(false)))
             .ProducesProblem(StatusCodes.Status404NotFound);

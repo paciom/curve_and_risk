@@ -86,5 +86,26 @@ public sealed record RiskRunResponse(
     DateTimeOffset CreatedUtc,
     DateTimeOffset? CompletedUtc);
 
+/// <summary>A question for the Risk Copilot about the trades booked, priced on the given snapshot.</summary>
+public sealed record CopilotQuestionRequest(Guid SnapshotId, string Question);
+
+/// <param name="Outcome">Succeeded, Failed, Denied or UnknownTool.</param>
+public sealed record CopilotToolCallDto(string Name, string Outcome);
+
+/// <param name="Status">
+/// Answered, UngroundedWithheld, Refused, Truncated, CallLimitReached, BudgetExhausted or ModelUnavailable.
+/// Only Answered carries the model's own text; every other status carries a fixed explanation.
+/// </param>
+/// <param name="UngroundedFigures">Figures the model stated that no engine result supports. Empty when Answered.</param>
+public sealed record CopilotAnswerResponse(
+    string Status,
+    string Answer,
+    IReadOnlyList<CopilotToolCallDto> ToolCalls,
+    IReadOnlyList<string> UngroundedFigures,
+    int ModelCalls,
+    long InputTokens,
+    long OutputTokens,
+    decimal CostUsd);
+
 /// <summary>One page of a collection. Pass <see cref="NextCursor"/> as <c>cursor</c> to get the next; null means the end.</summary>
 public sealed record PageResponse<T>(IReadOnlyList<T> Items, string? NextCursor);

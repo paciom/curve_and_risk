@@ -111,6 +111,17 @@ public sealed class TradeService(CurveRiskDbContext db, TimeProvider clock)
             : throw new NotFoundException("Trade", missing);
     }
 
+    /// <summary>The whole book as the engine's trade type, up to <paramref name="limit"/> trades in id order.</summary>
+    public async Task<IReadOnlyList<TradeDefinition>> GetBookAsync(int limit, CancellationToken cancellationToken)
+    {
+        var entities = await db.Trades.AsNoTracking()
+            .OrderBy(trade => trade.TradeId)
+            .Take(limit)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return [.. entities.Select(ToDefinition)];
+    }
+
     private static TradeDefinition ToDefinition(TradeEntity entity) => new(
         entity.TradeId,
         new SwapTerms((double)entity.NotionalAmount, entity.FixedRatePercent * PercentToFraction, entity.PayFixed, Tenor.Parse(entity.Tenor)),
