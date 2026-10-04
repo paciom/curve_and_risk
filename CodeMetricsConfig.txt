@@ -1,0 +1,11 @@
+# Thresholds for the code-metrics analyzers. Severities are set in .editorconfig.
+
+# Cyclomatic complexity per method. Above this a method has too many paths to test or review well.
+CA1502(Method): 10
+
+# Maintainability index per member (0-100, higher is better).
+CA1505: 20
+
+# Class coupling: distinct types a single member, then a single type, depends on.
+CA1506(Method): 30
+CA1506(Type): 60

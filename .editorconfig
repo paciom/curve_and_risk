@@ -1,0 +1,89 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{json,yml,yaml,props,csproj,slnx,mjs,md}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.cs]
+# ---- Style, enforced at build (EnforceCodeStyleInBuild) and by `dotnet format --verify-no-changes` ----
+csharp_style_namespace_declarations = file_scoped:error
+csharp_using_directive_placement = outside_namespace:error
+dotnet_sort_system_directives_first = true
+csharp_prefer_braces = true:error
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+dotnet_style_readonly_field = true:error
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:error
+
+dotnet_diagnostic.IDE0005.severity = error   # unused using
+dotnet_diagnostic.IDE0051.severity = error   # unused private member
+dotnet_diagnostic.IDE0052.severity = error   # private member never read
+dotnet_diagnostic.IDE0055.severity = error   # formatting
+dotnet_diagnostic.IDE0161.severity = error   # file-scoped namespace
+
+# ---- Code metrics (thresholds in CodeMetricsConfig.txt) ----
+dotnet_diagnostic.CA1502.severity = error    # cyclomatic complexity
+dotnet_diagnostic.CA1505.severity = error    # maintainability index
+dotnet_diagnostic.CA1506.severity = error    # class coupling
+
+# ---- Reliability and design rules raised above their default ----
+dotnet_diagnostic.CA1031.severity = error    # do not catch general exception types
+dotnet_diagnostic.CA1062.severity = none     # null-check public arguments: nullable reference types cover this
+dotnet_diagnostic.CA1307.severity = error    # specify StringComparison
+dotnet_diagnostic.CA1309.severity = error    # use ordinal comparison
+dotnet_diagnostic.CA1822.severity = error    # member can be static
+dotnet_diagnostic.CA1852.severity = error    # seal internal types
+dotnet_diagnostic.CA2000.severity = error    # dispose objects before losing scope
+dotnet_diagnostic.CA2007.severity = error    # ConfigureAwait in library code
+dotnet_diagnostic.CA2016.severity = error    # forward the CancellationToken
+dotnet_diagnostic.CA2201.severity = error    # do not throw reserved exception types
+dotnet_diagnostic.RS0030.severity = error    # banned API (BannedSymbols.txt)
+
+# ---- SonarQube rules (SonarAnalyzer.CSharp) ----
+dotnet_diagnostic.S1541.severity = error     # method cyclomatic complexity
+dotnet_diagnostic.S3776.severity = error     # cognitive complexity
+dotnet_diagnostic.S138.severity = error      # method length
+dotnet_diagnostic.S107.severity = error      # too many parameters
+dotnet_diagnostic.S134.severity = error      # nesting depth
+dotnet_diagnostic.S1067.severity = error     # expression complexity
+dotnet_diagnostic.S125.severity = error      # commented-out code
+dotnet_diagnostic.S1135.severity = error     # TODO left in code
+dotnet_diagnostic.S2068.severity = error     # hard-coded credentials
+dotnet_diagnostic.S4830.severity = error     # certificate validation disabled
+dotnet_diagnostic.S2245.severity = error     # insecure random
+dotnet_diagnostic.S3649.severity = error     # SQL built from user input
+
+dotnet_diagnostic.S1541.maximum = 10
+dotnet_diagnostic.S3776.threshold = 15
+dotnet_diagnostic.S138.max = 40
+dotnet_diagnostic.S107.max = 5
+dotnet_diagnostic.S134.max = 3
+
+[**/Program.cs]
+# Composition roots and console entry points: wiring everything together is their one job, so type
+# coupling is expected, and there is no synchronisation context to avoid.
+dotnet_diagnostic.CA1506.severity = none
+dotnet_diagnostic.CA2007.severity = none
+
+[tests/**.cs]
+# Test names are sentences with underscores; tests do not ship as a library.
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.S2699.severity = none      # "add an assertion": false positives on helper-asserted tests
+dotnet_diagnostic.S138.severity = none
+dotnet_diagnostic.CA2000.severity = none     # test doubles live for the test process
+
+# Code emitted by the SDK and test framework is not ours to fix.
+[**/obj/**.cs]
+generated_code = true
+dotnet_diagnostic.RS0030.severity = none

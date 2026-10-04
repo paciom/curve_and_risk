@@ -1,0 +1,10 @@
+bin/
+obj/
+.vs/
+*.user
+TestResults/
+evals/results/
+.env
+.claude/settings.local.json
+node_modules/
+.claude/.verify-stamp

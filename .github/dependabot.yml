@@ -1,0 +1,16 @@
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      analyzers:
+        patterns: ["SonarAnalyzer.*", "Microsoft.CodeAnalysis.*"]
+      test:
+        patterns: ["xunit*", "Microsoft.NET.Test.Sdk", "Microsoft.Testing.*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

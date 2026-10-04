@@ -1,0 +1,64 @@
+name: copilot-evals
+
+# Runs the Risk Copilot against the live model whenever something that can change its behaviour
+# changes. A drop below the threshold fails the check. Costs real money per run, so it is scoped
+# by path and never runs for forks (which have no access to the secret anyway).
+
+on:
+  pull_request:
+    paths:
+      - "src/CurveRisk.Copilot/**"
+      - "src/CurveRisk.Ai.Tools/**"
+      - "evals/**"
+  workflow_dispatch:
+    inputs:
+      trials:
+        description: Trials per case
+        default: "3"
+      filter:
+        description: Only run cases with this tag (optional)
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: copilot-evals-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    # Opt-in: set the repository variable ENABLE_LIVE_EVALS=true once the ANTHROPIC_API_KEY secret exists.
+    if: vars.ENABLE_LIVE_EVALS == 'true' && (github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository)
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      TRIALS: ${{ inputs.trials || '3' }}
+      FILTER: ${{ inputs.filter }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Build
+        run: dotnet build evals/CurveRisk.Evals -c Release
+
+      - name: Run evals
+        run: |
+          args=(--trials "$TRIALS" --threshold 0.9)
+          if [ -n "$FILTER" ]; then args+=(--filter "$FILTER"); fi
+          dotnet run --no-build -c Release --project evals/CurveRisk.Evals -- "${args[@]}"
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ -f evals/results/summary.md ]; then cat evals/results/summary.md >> "$GITHUB_STEP_SUMMARY"; fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: copilot-eval-results
+          path: evals/results/
+          if-no-files-found: ignore

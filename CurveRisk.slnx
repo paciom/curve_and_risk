@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/evals/">
+    <Project Path="evals/CurveRisk.Evals/CurveRisk.Evals.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/CurveRisk.Ai.Tools/CurveRisk.Ai.Tools.csproj" />
+    <Project Path="src/CurveRisk.Copilot/CurveRisk.Copilot.csproj" />
+    <Project Path="src/CurveRisk.Mcp/CurveRisk.Mcp.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CurveRisk.Ai.Tests/CurveRisk.Ai.Tests.csproj" />
+  </Folder>
+</Solution>

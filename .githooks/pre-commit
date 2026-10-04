@@ -1,0 +1,4 @@
+#!/bin/sh
+# Fast checks on every commit: formatting and size limits. Installed automatically on first build
+# (Directory.Build.targets sets core.hooksPath). Bypass, when you must, with: git commit --no-verify
+exec node tools/check.mjs --fast

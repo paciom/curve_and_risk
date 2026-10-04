@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "curverisk": {
+      "command": "dotnet",
+      "args": ["src/CurveRisk.Mcp/bin/Release/net10.0/CurveRisk.Mcp.dll"]
+    }
+  }
+}
