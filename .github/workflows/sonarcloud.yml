@@ -11,6 +11,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:   # the Run workflow button, for a first analysis or a retry without a commit
 
 permissions:
   contents: read
@@ -19,7 +20,7 @@ permissions:
 jobs:
   analyze:
     runs-on: ubuntu-latest
-    if: vars.SONAR_PROJECT_KEY != '' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+    if: vars.SONAR_PROJECT_KEY != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
