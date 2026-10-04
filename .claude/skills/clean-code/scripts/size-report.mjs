@@ -82,8 +82,9 @@ function bodyStart(text, from) {
 function functionsIn(source) {
   const text = strip(source);
   const found = [];
-  // name(params), optionally generic: name<T>(params)
-  const signature = /([A-Za-z_]\w*)\s*(?:<[^<>()]*>\s*)?\(([^(){};]*)\)/g;
+  // name(params), optionally generic: name<T>(params). Anchored at a word boundary so that a long
+  // identifier is tried once, not once per character.
+  const signature = /\b([A-Za-z_]\w*)\s*(?:<[^<>()]*>\s*)?\(([^(){};]*)\)/g;
   let match;
   while ((match = signature.exec(text)) !== null) {
     const name = match[1];
