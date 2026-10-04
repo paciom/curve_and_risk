@@ -80,11 +80,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      # Findings are emitted as annotations, pointing at the file and line.
+      # Findings are emitted as annotations, pointing at the file and line. The line break between
+      # findings is a real one inside the template: actionlint cannot parse a quoted "\n" there.
       - name: actionlint
-        run: >
-          docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.9
-          -format '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}{{"\n"}}{{end}}'
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.9 \
+            -format '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}
+          {{end}}'
 
   secrets-scan:
     runs-on: ubuntu-latest
