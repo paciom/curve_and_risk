@@ -62,7 +62,8 @@ edit      analyzers as compile errors · agent hooks (protect, format)
 finish    the agent cannot end a turn on a broken build or failing tests
 commit    format · size limits · lint · links · suppression budget
 push      + build · tests · coverage (line, branch, per file) · guard-rail tests
-PR        + secret scan · CodeQL · workflow lint · OpenSSF Scorecard
+PR        + secret scan · CodeQL · workflow lint · PostgreSQL tests · container build, smoke test and scan
+main      + publish the tested image to the container registry · OpenSSF Scorecard
 weekly    mutation testing · dependency updates
 ```
 
@@ -86,13 +87,14 @@ AI review, failure triage and a weekly security sweep run locally in Claude Code
 | What went wrong and how it was caught | [`docs/ai-workflow.md`](docs/ai-workflow.md) |
 | Every claim, with its file | [`docs/ai-engineering.md`](docs/ai-engineering.md) |
 | Every gate and threshold | [`docs/quality-gates.md`](docs/quality-gates.md) |
+| The container pipeline | [`container.yml`](.github/workflows/container.yml), [`docs/deployment.md`](docs/deployment.md) |
 
 ## Status
 
 Built: the pricing library, a versioned REST API with persistence, a small web page, the AI layer (MCP server, Copilot, evals), the agent harness and the quality pipeline. Run it with `dotnet run --project src/CurveRisk.Api` and open the URL it prints.
 
-[Planned](PLAN.md), not built: database migrations, market-data imports, Aspire orchestration, cloud deployment.
+[Planned](PLAN.md), not built: database migrations, market-data imports, Aspire orchestration, and the step that deploys the published image to a cloud.
 
 Not yet verified: the product agent has not been run against a live model (no API key yet), so its evals have no baseline; the PostgreSQL job has not run in CI; the pricing library is checked by closed forms and an independent re-derivation, not yet against QuantLib.
 
-**Stack:** .NET 10 and .NET Standard 2.0 · C# · ASP.NET Core · EF Core · PostgreSQL · xUnit v3 · Anthropic SDK · Model Context Protocol · OpenTelemetry · Stryker.NET · SonarAnalyzer · CodeQL · GitHub Actions · Claude Code
+**Stack:** .NET 10 and .NET Standard 2.0 · C# · ASP.NET Core · EF Core · PostgreSQL · xUnit v3 · Anthropic SDK · Model Context Protocol · OpenTelemetry · Stryker.NET · SonarAnalyzer · CodeQL · Docker · GitHub Actions · Claude Code

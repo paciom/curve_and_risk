@@ -1,0 +1,21 @@
+# Keep the build context to what the image needs: build configuration and src/.
+**/bin/
+**/obj/
+.git/
+.github/
+.githooks/
+.claude/
+.vs/
+node_modules/
+TestResults/
+StrykerOutput/
+benchmarks/
+docs/
+evals/
+tests/
+tools/
+*.md
+*.db
+*.db-shm
+*.db-wal
+.env

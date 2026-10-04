@@ -1,0 +1,110 @@
+name: container
+
+# Builds the API image, proves the built image actually serves requests, scans it for known
+# vulnerabilities, and on main publishes it to the GitHub container registry.
+#
+# Nothing is deployed from here: the output is an image, tagged with the commit, that any host can
+# run. See docs/deployment.md for running it and for what a cloud deployment would add.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "src/**"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "Directory.*.props"
+      - "global.json"
+      - ".github/workflows/container.yml"
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+  LOCAL_TAG: curverisk-api:ci
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - name: Build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: .
+          load: true
+          tags: ${{ env.LOCAL_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # A container that builds is not a container that works. Start it and use it the way a client would.
+      - name: Smoke test the image
+        run: |
+          set -euo pipefail
+          docker run -d --name api -p 8080:8080 "$LOCAL_TAG"
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/health > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://localhost:8080/health
+          curl -fsS http://localhost:8080/ | grep -q "<title>Curve &amp; Risk</title>"
+          snapshot=$(curl -fsS -X POST http://localhost:8080/api/v1/market-snapshots \
+            -H "Content-Type: application/json" \
+            -d '{"curveId":"USD-SOFR","asOf":"2026-09-30","interpolation":"LogLinearDiscount","quotes":[{"tenor":"1Y","ratePercent":4.05},{"tenor":"5Y","ratePercent":3.78}]}')
+          id=$(echo "$snapshot" | sed -E 's/.*"id":"([^"]+)".*/\1/')
+          curl -fsS "http://localhost:8080/api/v1/market-snapshots/$id/curve" | grep -q '"pillars"'
+          test "$(docker exec api id -u)" != "0"
+
+      - name: Container logs
+        if: failure()
+        run: docker logs api
+
+      - name: Scan for known vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.LOCAL_TAG }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Log in to the registry
+        if: github.event_name == 'push'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tags
+        if: github.event_name == 'push'
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=sha,format=long
+            type=raw,value=latest
+
+      # Rebuilt from cache, so this is the image that was just tested. Published with provenance and an
+      # SBOM so a consumer can check where it came from and what is in it.
+      - name: Publish
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          provenance: true
+          sbom: true

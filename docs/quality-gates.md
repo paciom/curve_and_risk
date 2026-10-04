@@ -46,6 +46,7 @@ Exceptions to rules are in `.editorconfig`, each with its reason on the same lin
 | `git push` | [`.githooks/pre-push`](../.githooks/pre-push) | Full gate |
 | Pull request and `main` | [`ci.yml`](../.github/workflows/ci.yml) | Full gate, the API tests again on PostgreSQL, secret scanning with gitleaks, workflow lint with actionlint |
 | Pull request and `main` | [`codeql.yml`](../.github/workflows/codeql.yml) | Static security analysis for C# and JavaScript |
+| Pull request and `main` | [`container.yml`](../.github/workflows/container.yml) | The image builds, the running container serves real requests as a non-root user, and Trivy finds no fixable critical or high vulnerability; on `main` the tested image is published |
 | `main` and weekly | [`scorecard.yml`](../.github/workflows/scorecard.yml) | OpenSSF Scorecard: supply-chain practices, scored externally |
 | Pull request, weekly, on demand | [`mutation.yml`](../.github/workflows/mutation.yml) | Stryker.NET mutation testing; reports the score, does not yet block |
 | Pull request and `main` | [`sonarcloud.yml`](../.github/workflows/sonarcloud.yml) | SonarQube Cloud quality gate (needs a token; see the file) |
@@ -55,7 +56,7 @@ Git hooks install themselves: [`Directory.Build.targets`](../Directory.Build.tar
 
 Every third-party action is pinned to a commit SHA, with Dependabot keeping the pins current, so a compromised tag cannot change what the pipeline runs. [`CODEOWNERS`](../.github/CODEOWNERS) names a human reviewer for the files that define what passing means: thresholds, rule configuration, agent guard rails, eval datasets and the workflows themselves.
 
-To make the CI checks binding, add a ruleset on `main` that requires a pull request, review from code owners, and the status checks `quality-gate`, `workflow-lint`, `secrets-scan` and `analyze`. That is a repository setting and cannot be done from a file.
+To make the CI checks binding, add a ruleset on `main` that requires a pull request, review from code owners, and the status checks `quality-gate`, `postgres-tests`, `workflow-lint`, `secrets-scan`, `image` and `analyze`. That is a repository setting and cannot be done from a file.
 
 ## Mutation testing
 
