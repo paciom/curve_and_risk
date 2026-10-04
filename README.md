@@ -10,12 +10,14 @@
 
 **One engineer. A team of AI agents. A production-shaped pricing and risk platform, with the test evidence to back it.**
 
-| 🧪 99.9% / 98.1% | 🎯 92% | 🛡️ 0 | 🤖 677 |
+| 🧪 99.9% / 98% | 🎯 92% | 🛡️ 0 | 🤖 677 |
 |:---:|:---:|:---:|:---:|
 | **line / branch coverage**, enforced as a gate | **of 1,483 injected faults caught** by the tests (mutation score), up from a first baseline of 55.6% | **analyzer findings**, and one suppressed rule in the whole codebase, with a budget that blocks a second | **tests**, all offline: 655 .NET and 22 on the agent guard rails |
-| [coverage report](https://github.com/paciom/curve_and_risk/actions/workflows/ci.yml) | [mutation report](https://github.com/paciom/curve_and_risk/actions/workflows/mutation.yml) | [build](https://github.com/paciom/curve_and_risk/actions/workflows/ci.yml) · [CodeQL](https://github.com/paciom/curve_and_risk/actions/workflows/codeql.yml) · [SonarQube](https://github.com/paciom/curve_and_risk/actions/workflows/sonarcloud.yml) | [test runs](https://github.com/paciom/curve_and_risk/actions/workflows/ci.yml) |
+| [📄 coverage report](docs/reports/coverage.md) | [📄 mutation report](docs/reports/mutation.md) | enforced at [build](https://github.com/paciom/curve_and_risk/actions/workflows/ci.yml); scanned by [CodeQL](https://github.com/paciom/curve_and_risk/actions/workflows/codeql.yml) | [📄 test report](docs/reports/coverage.md#tests) |
 
-Each link opens the CI workflow that produces the report; the coverage and mutation reports are attached to every run as artifacts. [How each gate works](docs/quality-gates.md).
+[![Stryker.NET mutation report: 1,365 mutants detected, 117 survived](docs/reports/mutation-report.png)](docs/reports/mutation.md)
+
+The reports are snapshots of the latest full local run, committed so they open in one click. Live results are on the [ci](https://github.com/paciom/curve_and_risk/actions/workflows/ci.yml) and [mutation](https://github.com/paciom/curve_and_risk/actions/workflows/mutation.yml) workflow runs. [How each gate works](docs/quality-gates.md).
 
 ### AI engineering on show
 
