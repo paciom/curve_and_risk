@@ -80,14 +80,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      # Each finding becomes an annotation on the run, then the job fails if there were any.
+      # Each finding becomes an annotation on the run, and the job fails with actionlint's own exit
+      # code. Only stdout is captured: docker writes its image-pull progress to stderr.
       - name: actionlint
         run: |
-          docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.9 -oneline > lint.txt 2>&1 || true
+          status=0
+          docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.9 -oneline > lint.txt || status=$?
           while IFS= read -r finding; do
             echo "::error title=actionlint::${finding}"
           done < lint.txt
-          test ! -s lint.txt
+          exit "$status"
 
   secrets-scan:
     runs-on: ubuntu-latest
