@@ -13,6 +13,7 @@ dotnet build CurveRisk.slnx          # every analyzer finding is a build error
 dotnet test                          # Microsoft.Testing.Platform runner; no credentials or network needed
 dotnet format CurveRisk.slnx         # fix formatting
 dotnet run --project evals/CurveRisk.Evals -- --trials 3    # LIVE model calls, costs money: ask first
+node tools/mutation-loop.mjs --dry-run --report <report.json>   # plan of the mutation-kill loop; without --dry-run it is LIVE: ask first
 ```
 
 The MCP server in `.mcp.json` runs the prebuilt Release binary: build it once with `dotnet build src/CurveRisk.Mcp -c Release`, and again after changing a tool. Running Release keeps a live server from locking the Debug binaries that `dotnet build` and `dotnet test` write, and starting the DLL directly avoids the `dotnet run` start-up delay that makes MCP clients time out. It offers read tools only unless started with `--allow-writes`.
