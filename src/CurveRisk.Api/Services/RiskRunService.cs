@@ -47,7 +47,7 @@ public sealed class RiskRunService(CurveRiskDbContext db, PricingService pricing
             SnapshotId = request.SnapshotId,
             TradeIdsJson = JsonSerializer.Serialize(request.TradeIds),
             Status = RiskRunStatus.Pending,
-            CreatedUtc = clock.GetUtcNow(),
+            CreatedUtc = clock.UtcNowToMillisecond(),
         };
         db.RiskRuns.Add(entity);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -80,7 +80,7 @@ public sealed class RiskRunService(CurveRiskDbContext db, PricingService pricing
             entity.Status = RiskRunStatus.Failed;
         }
 
-        entity.CompletedUtc = clock.GetUtcNow();
+        entity.CompletedUtc = clock.UtcNowToMillisecond();
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 

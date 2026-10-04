@@ -52,7 +52,7 @@ jobs:
         run: |
           set -euo pipefail
           docker run -d --name api -p 8080:8080 "$LOCAL_TAG"
-          for attempt in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             if curl -fsS http://localhost:8080/health > /dev/null; then break; fi
             sleep 1
           done
@@ -61,7 +61,7 @@ jobs:
           snapshot=$(curl -fsS -X POST http://localhost:8080/api/v1/market-snapshots \
             -H "Content-Type: application/json" \
             -d '{"curveId":"USD-SOFR","asOf":"2026-09-30","interpolation":"LogLinearDiscount","quotes":[{"tenor":"1Y","ratePercent":4.05},{"tenor":"5Y","ratePercent":3.78}]}')
-          id=$(echo "$snapshot" | sed -E 's/.*"id":"([^"]+)".*/\1/')
+          id=$(echo "$snapshot" | jq -r .id)
           curl -fsS "http://localhost:8080/api/v1/market-snapshots/$id/curve" | grep -q '"pillars"'
           test "$(docker exec api id -u)" != "0"
 

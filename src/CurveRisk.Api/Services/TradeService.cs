@@ -49,7 +49,7 @@ public sealed class TradeService(CurveRiskDbContext db, TimeProvider clock)
             Description = request.Description ?? string.Empty,
             Version = 1,
             IdempotencyKey = idempotencyKey,
-            CreatedUtc = clock.GetUtcNow(),
+            CreatedUtc = clock.UtcNowToMillisecond(),
         };
         db.Trades.Add(entity);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

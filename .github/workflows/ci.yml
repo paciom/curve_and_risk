@@ -66,14 +66,25 @@ jobs:
           global-json-file: global.json
 
       - name: API tests on PostgreSQL
-        run: dotnet test --project tests/CurveRisk.Api.Tests/CurveRisk.Api.Tests.csproj
+        run: dotnet test --project tests/CurveRisk.Api.Tests/CurveRisk.Api.Tests.csproj 2>&1 | tee test.log
+
+      # Failed tests become annotations on the run, so the cause is visible without opening the log.
+      - name: Report failed tests
+        if: failure()
+        run: |
+          grep -E "^failed |Assert\.|Expected:|Actual:|Exception" test.log | head -40 | while IFS= read -r line; do
+            echo "::error title=PostgreSQL test::${line}"
+          done
 
   workflow-lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      # Findings are emitted as annotations, pointing at the file and line.
       - name: actionlint
-        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.9 -color
+        run: >
+          docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.9
+          -format '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}{{"\n"}}{{end}}'
 
   secrets-scan:
     runs-on: ubuntu-latest
