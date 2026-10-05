@@ -10,8 +10,8 @@ Snapshot of `node tools/check.mjs` on 2026-10-04: **99.9% of lines** (2288 of 22
 | `tests/CurveRisk.Analytics.Tests` | 171 | 0 |
 | `tests/CurveRisk.Api.Tests` (SQLite locally, PostgreSQL in CI) | 104 | 0 |
 | `tests/hooks` (agent guard rails) | 22 | 0 |
-| `tests/tools` (mutation-kill loop) | 29 | 0 |
-| **Total** | **706** | **0** |
+| `tests/tools` (mutation-kill loop) | 33 | 0 |
+| **Total** | **710** | **0** |
 
 ## Coverage by file
 

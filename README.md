@@ -10,9 +10,9 @@
 
 **One engineer. A team of AI agents. A production-shaped pricing and risk platform, with the test evidence to back it.**
 
-| 🧪 99.8% / 98% | 🎯 92% | 🛡️ 0 | 🤖 844 |
+| 🧪 99.8% / 98% | 🎯 92% | 🛡️ 0 | 🤖 848 |
 |:---:|:---:|:---:|:---:|
-| **line / branch coverage**, enforced as a gate | **of 1,483 injected faults caught** by the tests (mutation score), up from a first baseline of 55.6% | **analyzer findings**, and one suppressed rule in the whole codebase, with a budget that blocks a second | **tests**, all offline: 793 .NET, 22 on the agent guard rails and 29 on the loop that directs the agent |
+| **line / branch coverage**, enforced as a gate | **of 1,483 injected faults caught** by the tests (mutation score), up from a first baseline of 55.6% | **analyzer findings**, and one suppressed rule in the whole codebase, with a budget that blocks a second | **tests**, all offline: 793 .NET, 22 on the agent guard rails and 33 on the loop that directs the agent |
 | [📄 coverage report](docs/reports/coverage.md) | [📄 mutation report](docs/reports/mutation.md) | enforced at [build](https://github.com/paciom/curve_and_risk/actions/workflows/ci.yml); scanned by [CodeQL](https://github.com/paciom/curve_and_risk/actions/workflows/codeql.yml) | [📄 test report](docs/reports/coverage.md#tests) |
 
 [![Stryker.NET mutation report: 1,365 mutants detected, 117 survived](docs/reports/mutation-report.png)](docs/reports/mutation.md)
@@ -76,6 +76,8 @@ A .NET 10 pricing and risk platform built agent-first, where every rule that mat
 
 **A reviewer broke the loop that checks the agent.** With its tests green, an independent reviewer showed that the mutation loop would miss a change the agent had staged or committed, and would count a kill bought by weakening another test. The loop now compares against the last tree it accepted, accepts added tests only, and rejects an attempt that lets a killed mutant survive. Each has a test.
 
+**The loop's first live run removed a file that was not the agent's.** A note written in the same checkout while Stryker was measuring was taken for the agent's work and reverted away; it was restored from a session transcript. The loop now stops, reverting nothing, when it finds a change made before the agent starts, and sets rejected work aside instead of deleting it. No test had asked whose file it was.
+
 **The reviewers earned their place.** Scored against ten planted defects, both found all of theirs and raised no false alarm. One also found a real bug in a sample that was meant to be clean.
 
 ## How quality is enforced
@@ -121,6 +123,6 @@ Built: the pricing library, a versioned REST API with persistence, a small web p
 
 [Planned](PLAN.md), not built: database migrations, market-data imports, Aspire orchestration, and the step that deploys the published image to a cloud.
 
-Not yet verified: the product agent has not been run against a live model (no API key yet), so its evals have no baseline; the mutation-kill loop is tested against a scripted agent and one real Stryker measurement, and has not yet driven a live agent, so it has no ledger; the PostgreSQL job has not run in CI; the pricing library is checked by closed forms and an independent re-derivation, not yet against QuantLib; the graph runtime and the risk brief were added after the last mutation run, so the mutation score above does not cover them, and the brief's commentary step has not run against a live model.
+Not yet verified: the product agent has not been run against a live model (no API key yet), so its evals have no baseline; the mutation-kill loop is tested against a scripted agent and one real Stryker measurement, and has not yet driven a live agent (the first trial stopped because the `claude` CLI was not logged in), so it has no ledger; the PostgreSQL job has not run in CI; the pricing library is checked by closed forms and an independent re-derivation, not yet against QuantLib; the graph runtime and the risk brief were added after the last mutation run, so the mutation score above does not cover them, and the brief's commentary step has not run against a live model.
 
 **Stack:** .NET 10 and .NET Standard 2.0 · C# · ASP.NET Core · EF Core · PostgreSQL · xUnit v3 · Anthropic SDK · Model Context Protocol · OpenTelemetry · Stryker.NET · SonarAnalyzer · SonarQube Cloud · CodeQL · Docker · GitHub Actions · Claude Code

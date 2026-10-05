@@ -9,7 +9,9 @@
 // A live run makes model calls through the `claude` CLI and costs money, up to maxSpendUsd. Limits,
 // the target score and the paths the agent may change are in tools/quality.config.json under
 // "mutationLoop". Each attempt is appended to the ledger named there. Kept tests are staged, not
-// committed: review and commit them yourself. Run nothing else that builds while this is running.
+// committed: review and commit them yourself. Leave this checkout alone while it runs: no builds, no
+// edits. The loop stops if it finds a change that is not its own, and sets rejected work aside under
+// .git/mutation-loop-rejected rather than deleting it.
 //
 // The loop's score is the starting report plus the kills Stryker confirmed file by file. The score
 // of record is still a full `dotnet stryker` run afterwards.

@@ -112,7 +112,7 @@ measure (Stryker) -> pick a file's survivors -> prompt the agent -> check -> kee
 | Objective | The mutation score, computed from Stryker's reports ([`report.mjs`](../tools/mutation-loop/report.mjs)), never from what the agent says |
 | Instruction | Written by the script from the surviving mutants ([`prompt.mjs`](../tools/mutation-loop/prompt.mjs)) and run in a headless `claude -p` session |
 | Check | After every attempt the script verifies that tests were only added (nothing outside the test projects touched, no existing line removed, no test that reads the environment), that `check.mjs --fast` passes, and that Stryker, rerun on that file, reports the targets killed and nothing previously killed now surviving ([`loop.mjs`](../tools/mutation-loop/loop.mjs)) |
-| Keep or revert | The loop holds the last accepted state as a git tree. A confirmed kill is staged and becomes that tree; anything else, staged or not, is put back to it. A commit made during an attempt stops the run ([`ports.mjs`](../tools/mutation-loop/ports.mjs)) |
+| Keep or revert | The loop holds the last accepted state as a git tree. A confirmed kill is staged and becomes that tree; anything else, staged or not, is put back to it, and what is removed is set aside under `.git/mutation-loop-rejected`, not deleted. A commit made during an attempt, or a change found in the tree before the agent starts, stops the run with nothing reverted ([`ports.mjs`](../tools/mutation-loop/ports.mjs)) |
 | Feedback | The reason for a rejection, or the mutants still surviving, is the next prompt; two attempts per file |
 | Stop conditions | Target score reached, nothing left to try, round limit, spend limit in US dollars, or three rounds in a row without a kill |
 | Unobservable mutants | Named by a rule in [`quality.config.json`](../tools/quality.config.json) (`ConfigureAwait(false)` flips), not by the agent. An agent's claim that a mutant is unobservable is logged for a person and changes nothing |
@@ -120,7 +120,7 @@ measure (Stryker) -> pick a file's survivors -> prompt the agent -> check -> kee
 
 The loop's decisions are tested against a scripted agent, including one that claims success without achieving it and one that edits the code under test ([`mutation-loop.test.mjs`](../tests/tools/mutation-loop.test.mjs)); keep and revert are tested on a real throwaway repository ([`mutation-loop-ports.test.mjs`](../tests/tools/mutation-loop-ports.test.mjs)). Kept tests are staged, not committed, so a person still reviews what is merged.
 
-Limits. The checks make the cheap ways of cheating fail; they do not prove a kept test is a good test, which is why the result is staged for review. The headless session runs with the project's own permission settings, and files git ignores are outside the loop's view. Each check reruns Stryker on one file, about six minutes here, so a full run takes hours. The score the loop reports is the starting report plus confirmed kills; a full `dotnet stryker` run afterwards is the score of record.
+Limits. The checks make the cheap ways of cheating fail; they do not prove a kept test is a good test, which is why the result is staged for review. The headless session runs with the project's own permission settings, and files git ignores are outside the loop's view. The checkout must be left alone while the loop runs: a file created during an attempt is indistinguishable from the agent's work. Each check reruns Stryker on one file, about six minutes here, so a full run takes hours. The score the loop reports is the starting report plus confirmed kills; a full `dotnet stryker` run afterwards is the score of record.
 
 **The product loop** ([`CopilotAgent.cs`](../src/CurveRisk.Copilot/CopilotAgent.cs), about 130 lines): call the model, run its tool calls, feed results back, check the answer, repeat.
 
@@ -287,7 +287,7 @@ It did not at first. The agent loop was an 88-line method in a 320-line file. Fo
 
 **Design for testability.** The agent depends on [`IModelClient`](../src/CurveRisk.Copilot/IModelClient.cs), `IApprovalGate`, `IRiskEngine` and `TimeProvider`, all injected through constructors. That is why the whole loop runs in tests against a [scripted model](../tests/CurveRisk.Ai.Tests/ScriptedModelClient.cs) with no network.
 
-**Tests.** 655 .NET tests, 22 hook tests and 29 tests of the mutation loop, no credentials needed. Line coverage is 96.8% over `src/` and `evals/` (console entry points excluded), enforced by the coverage gate.
+**Tests.** 655 .NET tests, 22 hook tests and 33 tests of the mutation loop, no credentials needed. Line coverage is 96.8% over `src/` and `evals/` (console entry points excluded), enforced by the coverage gate.
 
 Beyond coverage, the suite has:
 - **Wire-level tests without a network.** The real Anthropic SDK is driven against a stubbed HTTP transport and the request JSON is asserted ([`AnthropicModelClientTests`](../tests/CurveRisk.Ai.Tests/AnthropicModelClientTests.cs)).

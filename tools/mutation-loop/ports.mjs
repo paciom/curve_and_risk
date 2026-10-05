@@ -3,11 +3,13 @@
 //
 // The loop remembers the last state it accepted as a git tree. "Changed" means different from that
 // tree in the working tree or in the index, so staging a file does not hide it; "kept" means staged
-// and made the new accepted tree; "reverted" means index and working tree put back to it. A commit
-// made during an attempt, or a revert that does not take, aborts the run.
+// and made the new accepted tree; "reverted" means index and working tree put back to it. Nothing a
+// revert removes is destroyed: the rejected work is first set aside under .git/mutation-loop-rejected,
+// because a file the loop takes for the agent's may be a person's. A commit made during an attempt,
+// or a revert that does not take, aborts the run.
 
 import { spawnSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const OUTPUT_TAIL = 3000;
@@ -37,26 +39,44 @@ const parseNumstat = text => records(text).map(record => {
   return [file, removed === "-" ? 1 : Number(removed)];
 });
 
+/** Moves rejected work out of the tree instead of deleting it: a patch of the tracked edits, and the new files themselves. */
+function setAside(root, gitDirectory, { trackedPatch, newFiles }) {
+  if (trackedPatch === "" && newFiles.length === 0) return;
+  const directory = path.join(gitDirectory, "mutation-loop-rejected", new Date().toISOString().replaceAll(":", "-"));
+  mkdirSync(directory, { recursive: true });
+  if (trackedPatch !== "") writeFileSync(path.join(directory, "tracked.patch"), trackedPatch);
+  for (const file of newFiles) {
+    mkdirSync(path.dirname(path.join(directory, file)), { recursive: true });
+    renameSync(path.join(root, file), path.join(directory, file));
+  }
+}
+
+const untrackedFiles = git => records(git(["ls-files", "--others", "--exclude-standard", "-z"]));
+
+/** Every file that differs from the accepted tree, in the working tree or in the index, with the lines it lost. */
+function changesSince(git, accepted) {
+  if (git(["rev-parse", "HEAD"]).trim() !== accepted.head) throw new Error("A commit was made during an attempt. The loop only stages; stopping so a person can look.");
+  const numstat = scope => parseNumstat(git(["diff", ...scope, "--numstat", "--no-renames", "-z", accepted.tree]));
+  const removedByFile = new Map(untrackedFiles(git).map(file => [file, 0]));
+  for (const [file, removed] of [...numstat([]), ...numstat(["--cached"])]) {
+    removedByFile.set(file, Math.max(removedByFile.get(file) ?? 0, removed));
+  }
+  return [...removedByFile].map(([file, removedLines]) => ({ file, removedLines }));
+}
+
 function gitPorts(root) {
   const git = gitCommand(root);
   let accepted = null;
   const snapshot = () => { accepted = { head: git(["rev-parse", "HEAD"]).trim(), tree: git(["write-tree"]).trim() }; };
-  const untracked = () => records(git(["ls-files", "--others", "--exclude-standard", "-z"]));
-  const numstat = scope => parseNumstat(git(["diff", ...scope, "--numstat", "--no-renames", "-z", accepted.tree]));
-
-  function changes() {
-    if (git(["rev-parse", "HEAD"]).trim() !== accepted.head) throw new Error("A commit was made during an attempt. The loop only stages; stopping so a person can look.");
-    const removedByFile = new Map(untracked().map(file => [file, 0]));
-    for (const [file, removed] of [...numstat([]), ...numstat(["--cached"])]) {
-      removedByFile.set(file, Math.max(removedByFile.get(file) ?? 0, removed));
-    }
-    return [...removedByFile].map(([file, removedLines]) => ({ file, removedLines }));
-  }
+  const untracked = () => untrackedFiles(git);
+  const changes = () => changesSince(git, accepted);
 
   function revert() {
+    const trackedPatch = git(["diff", "--binary", accepted.tree]);
     git(["read-tree", accepted.tree]);
     git(["checkout-index", "-a", "-f"]);
-    for (const file of untracked()) rmSync(path.join(root, file), { force: true });
+    const gitDirectory = path.resolve(root, git(["rev-parse", "--git-dir"]).trim());
+    setAside(root, gitDirectory, { trackedPatch, newFiles: untracked() });
     const left = changes();
     if (left.length > 0) throw new Error(`Revert left changes behind: ${left.map(change => change.file).join(", ")}`);
   }
@@ -118,7 +138,10 @@ export function parseAgentReply(result, budgetUsd) {
 function agentPort(root) {
   return (prompt, budgetUsd) => {
     const args = ["-p", "--output-format", "json", "--permission-mode", "acceptEdits", "--max-budget-usd", budgetUsd.toFixed(2)];
-    const result = run(root, "claude", args, { input: prompt, timeout: AGENT_TIMEOUT_MS, shell: process.platform === "win32" });
+    // On Windows the CLI is a .cmd shim, which only a shell can start. The arguments are fixed tokens; the prompt goes on stdin.
+    const viaShell = process.platform === "win32";
+    const options = { input: prompt, timeout: AGENT_TIMEOUT_MS, shell: viaShell };
+    const result = viaShell ? run(root, `claude ${args.join(" ")}`, [], options) : run(root, "claude", args, options);
     // On Windows the timeout ends the shell, not the session under it, which could go on editing the tree.
     if (result.timedOut) throw new Error("The agent timed out and may still be running. Check for a stray claude process before running the loop again.");
     return parseAgentReply(result, budgetUsd);

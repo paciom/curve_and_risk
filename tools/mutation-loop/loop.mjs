@@ -86,9 +86,14 @@ function judge(file, targets, context) {
 
 function attempt(step, context) {
   const { ports, settings, state } = context;
+  // Whatever is in the tree before the agent starts is not the agent's, so it is not the loop's to revert.
+  const foreign = ports.changes().map(change => change.file);
+  if (foreign.length > 0) throw new Error(`The working tree changed outside the loop. Nothing was reverted. Changed: ${foreign.join(", ")}`);
+
   const budgetUsd = Math.min(settings.maxSpendPerAttemptUsd, budgetLeftUsd(state, settings));
   const reply = ports.askAgent(buildPrompt(step.file, step.targets, step.feedback), budgetUsd);
   state.spendUsd += reply.costUsd;
+  if (!reply.ok && reply.costUsd === 0) throw new Error(`The agent could not run: ${reply.text.slice(-NOTE_LENGTH)}`);
 
   const verdict = judge(step.file, step.targets, context);
   if (verdict.keep) ports.keep(verdict.changed);

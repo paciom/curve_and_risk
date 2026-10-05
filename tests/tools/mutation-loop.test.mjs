@@ -6,62 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { runLoop } from "../../tools/mutation-loop/loop.mjs";
 import { readMutants, score, targetsByFile } from "../../tools/mutation-loop/report.mjs";
-
-const SOURCE = ["if (x >= 1) return;", "await task.ConfigureAwait(false);", "return a + b;"].join("\n");
-const SHAPES = [
-  { mutatorName: "Equality mutation", replacement: "x > 1", start: 5, end: 11 },
-  { mutatorName: "Boolean mutation", replacement: "true", start: 27, end: 32 },
-  { mutatorName: "Arithmetic mutation", replacement: "a - b", start: 8, end: 13 },
-];
-
-/** A Stryker report: for each file, the status of its three mutants (comparison, ConfigureAwait, arithmetic). */
-function reportOf(files) {
-  const entries = Object.entries(files).map(([file, statuses]) => [`D:\\repo\\${file.replaceAll("/", "\\")}`, {
-    source: SOURCE,
-    mutants: statuses.map((status, index) => ({
-      id: String(index), mutatorName: SHAPES[index].mutatorName, replacement: SHAPES[index].replacement, status,
-      location: { start: { line: index + 1, column: SHAPES[index].start }, end: { line: index + 1, column: SHAPES[index].end } },
-    })),
-  }]);
-  return { projectRoot: "D:\\repo", files: Object.fromEntries(entries) };
-}
-
-const settings = {
-  targetScorePercent: 100, maxRounds: 10, maxAttemptsPerFile: 2, stallRounds: 2, maxSpendUsd: 10, maxSpendPerAttemptUsd: 3,
-  allowedPaths: ["^tests/CurveRisk\\.[^/]+/.+\\.cs$"], protectedPaths: ["/golden/", "\\.verified\\."],
-  forbiddenTestContent: ["Stryker", "GetEnvironmentVariable"],
-  unobservable: [{ precededBy: "ConfigureAwait(" }],
-};
-const TEST_FILE = "tests/CurveRisk.Api.Tests/ATests.cs";
-
-/** Ports that replay one scripted attempt per agent call and log every call the loop makes. */
-function scripted(baseline, attempts) {
-  const calls = [];
-  const ledger = [];
-  let current = null;
-  let measured = false;
-  const changes = () => (measured && current.lateChanged ? current.lateChanged : current.changed)
-    .map(file => ({ file, removedLines: current.removed?.[file] ?? 0 }));
-  const ports = {
-    baseline: () => baseline,
-    askAgent(prompt, budgetUsd) {
-      if (current?.agentThrows) throw new Error(current.agentThrows);
-      current = attempts.shift() ?? { changed: [] };
-      measured = false;
-      calls.push({ call: "askAgent", prompt, budgetUsd });
-      return { ok: current.agentOk ?? true, costUsd: current.costUsd ?? 1, text: current.says ?? "" };
-    },
-    changes,
-    contentOf: () => current.content ?? "Assert.Equal(1, 1);",
-    fastGate: () => (calls.push({ call: "fastGate" }), { ok: current.gateOk ?? true, output: "size: too long" }),
-    measure: file => (measured = true, calls.push({ call: "measure", file }), current.measured ? { ok: true, report: current.measured } : { ok: false, output: "1 test failed" }),
-    keep: files => calls.push({ call: "keep", files }),
-    revert: () => calls.push({ call: "revert" }),
-    record: entry => ledger.push(entry),
-  };
-  const named = name => calls.filter(c => c.call === name);
-  return { ports, ledger, named, attemptsLogged: () => ledger.filter(e => e.event === "attempt") };
-}
+import { reportOf, scripted, settings, TEST_FILE } from "./scripted-loop.mjs";
 
 test("the report is read into repository-relative mutants with the text they replace", () => {
   const [comparison, configureAwait] = readMutants(reportOf({ "src/A.cs": ["Survived", "Survived", "Killed"] }));
@@ -276,4 +221,24 @@ test("a port that throws aborts the run, and the ledger still gets its closing e
   const last = run.ledger.at(-1);
   assert.equal(last.reason, "aborted");
   assert.match(last.error, /timed out/);
+});
+
+test("a change that is in the tree before the agent starts stops the loop and is not reverted", () => {
+  const run = scripted(reportOf({ "src/A.cs": ["Survived", "Killed", "Killed"] }), [{ changed: [], foreign: ["docs/someone-elses-notes.md"] }]);
+
+  assert.throws(() => runLoop(settings, run.ports), /changed outside the loop[^]*someone-elses-notes/);
+
+  assert.equal(run.named("askAgent").length, 0);
+  assert.equal(run.named("revert").length, 0);
+  assert.equal(run.ledger.at(-1).reason, "aborted");
+});
+
+test("an agent that cannot run at all stops the loop instead of using up rounds", () => {
+  const baseline = reportOf({ "src/A.cs": ["Survived", "Killed", "Killed"], "src/B.cs": ["Survived", "Killed", "Killed"] });
+  const run = scripted(baseline, [{ changed: [], agentOk: false, costUsd: 0, says: "Not logged in" }]);
+
+  assert.throws(() => runLoop(settings, run.ports), /could not run: Not logged in/);
+
+  assert.equal(run.named("askAgent").length, 1);
+  assert.equal(run.ledger.at(-1).reason, "aborted");
 });

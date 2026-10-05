@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createPorts, parseAgentReply } from "../../tools/mutation-loop/ports.mjs";
@@ -144,4 +144,26 @@ test("a reply that cannot be read is charged the whole budget it was given", () 
 
   assert.deepEqual(reply, { ok: false, costUsd: 3, text: "claude: command not found" });
   assert.equal(parseAgentReply({ ok: true, stdout: "{}", output: "" }, 3).costUsd, 3);
+});
+
+test("revert destroys nothing: new files and tracked edits are set aside under .git", t => {
+  const { root, ports, write } = repository(t);
+  write("docs/notes.md", "a person's notes");
+  write("src/A.cs", "edited");
+
+  ports.revert();
+
+  const rejected = path.join(root, ".git", "mutation-loop-rejected");
+  const [run] = readdirSync(rejected);
+  assert.equal(readFileSync(path.join(rejected, run, "docs/notes.md"), "utf8"), "a person's notes");
+  assert.match(readFileSync(path.join(rejected, run, "tracked.patch"), "utf8"), /\+edited/);
+  assert.equal(ports.isClean(), true);
+});
+
+test("a revert with nothing to undo sets nothing aside", t => {
+  const { root, ports } = repository(t);
+
+  ports.revert();
+
+  assert.equal(existsSync(path.join(root, ".git", "mutation-loop-rejected")), false);
 });
