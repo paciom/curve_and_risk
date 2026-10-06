@@ -65,9 +65,16 @@ function dryRun(report) {
   if (queue.length > 0) console.log(`\nFirst prompt:\n\n${buildPrompt(queue[0].file, queue[0].targets, null)}`);
 }
 
+/** The path comes from the command line, so it is confined to this checkout before anything is read. */
+function reportPath() {
+  const relative = path.relative(root, path.resolve(options.report));
+  const resolved = path.join(root, relative);
+  return !path.isAbsolute(relative) && resolved.startsWith(root + path.sep) ? resolved : fail("--report must be a file inside this checkout.");
+}
+
 const ports = createPorts(root, settings);
 function readReport() {
-  const report = JSON.parse(readFileSync(path.resolve(options.report), "utf8"));
+  const report = JSON.parse(readFileSync(reportPath(), "utf8"));
   const stale = staleFiles(report);
   return stale.length === 0 ? report : fail(`The report does not match the code. Run without --report to measure afresh. Changed since: ${stale.join(", ")}`);
 }
