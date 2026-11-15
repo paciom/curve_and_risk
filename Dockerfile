@@ -20,7 +20,7 @@ RUN dotnet publish src/CurveRisk.Api/CurveRisk.Api.csproj \
       -p:UseAppHost=false
 
 # ---- Run ----
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS runtime
 WORKDIR /app
 
 # The local database lives on a volume so it survives the container. With Database__Provider=Postgres
